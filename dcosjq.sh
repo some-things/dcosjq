@@ -59,64 +59,81 @@ done
 # Framework
 #####
 # WIP
-if [[ $1 == "framework" && ! -z $2 ]]; then
-  # Add paramaters here in if/elif statements, else statement is used when option isn't found
+if [[ $1 == "framework" && $# -eq 1 ]]; then
+  # If naked, print usage
+  if [[ $# -eq 1 ]]; then
+    echo "Print framework usage here, etc."
+  fi
+elif [[ $1 == "framework" && $# -eq 2 ]]; then
+  # Framework list
   if [[ $2 == "list" ]]; then
-    echo -e "ID NAME" | awk '{ printf "%-80s %-80s\n", $1, $2}'
-    jq -r '.frameworks[] | "\(.id) \(.name)"' $MESOS_LEADER_DIR"/5050-master_state-summary.json" | awk '{ printf "%-80s %-80s\n", $1, $2}'
+    echo -e "ID NAME" | awk '{ printf "%-80s %-40s\n", $1, $2}'
+    jq -r '.frameworks[] | "\(.id) \(.name)"' $MESOS_LEADER_DIR"/5050-master_state-summary.json" | awk '{ printf "%-80s %-40s\n", $1, $2}'
+  # Print framework summary for a given framework name
+  elif [[ $2 == "$(jq -r '.frameworks[] | "\(.name)"' $MESOS_LEADER_DIR"/5050-master_state-summary.json" | grep -i $2)" ]]; then
+    jq '.frameworks[] | select(.name == "'$2'")' $MESOS_LEADER_DIR"/5050-master_state-summary.json"
   # If there are no matches for parameter(s) print error and usage
   else
     echo "ERROR: Command not found."
     echo "Print framework usage here, etc."
   fi
-# If command is naked, print usage
-elif [[ $1 == "framework" && -z $2 ]]; then
-  echo "Print framework usage here, etc."
 fi
 
 #####
 # Agent
 #####
 # WIP
-if [[ $1 == "agent" && ! -z $2 ]]; then
-  # Add paramaters here in if/elif statements, else statement is used when option isn't found
+if [[ $1 == "agent" && $# -eq 1 ]]; then
+  # If naked, print usage
+  if [[ $# -eq 1 ]]; then
+    echo "Print agent usage here, etc."
+  fi
+elif [[ $1 == "agent" && $# -eq 2 ]]; then
+  # Agent list
   if [[ $2 == "list" ]]; then
-    echo -e "ID HOSTNAME" | awk '{ printf "%-80s %-80s\n", $1, $2}'
-    jq -r '.slaves[] | "\(.id) \(.hostname)"' $MESOS_LEADER_DIR"/5050-master_state-summary.json" | awk '{ printf "%-80s %-80s\n", $1, $2}'
+    echo -e "ID HOSTNAME" | awk '{ printf "%-80s %-40s\n", $1, $2}'
+    jq -r '.slaves[] | "\(.id) \(.hostname)"' $MESOS_LEADER_DIR"/5050-master_state-summary.json" | awk '{ printf "%-80s %-40s\n", $1, $2}'
   # If there are no matches for parameter(s) print error and usage
   else
     echo "ERROR: Command not found."
-    echo "Print agent usage here, etc."
+    echo "Print framework usage here, etc."
   fi
-# If command is naked, print usage
-elif [[ $1 == "agent" && -z $2 ]]; then
-  echo "Print agent usage here, etc."
 fi
 
 #####
 # Role
 #####
 # WIP
-if [[ $1 == "role" && ! -z $2 ]]; then
-  # Add paramaters here in if/elif statements, else statement is used when option isn't found
+if [[ $1 == "role" && $# -eq 1 ]]; then
+  # If naked, print usage
+  if [[ $# -eq 1 ]]; then
+    echo "Print role usage here, etc."
+  fi
+elif [[ $1 == "role" && $# -eq 2 ]]; then
+  # Agent list
   if [[ $2 == "list" ]]; then
-    echo -e "               ---- ID ----                         ---- HOSTNAME ----"
-    jq -r '.roles[] | "\(.id)               \(.name)"' $MESOS_LEADER_DIR"/5050-master_state-summary.json"
+    echo -e "NAME" | awk '{ printf "%-80s %-40s\n", $1, $2}'
+    jq -r '.roles[] | "\(.name)"' $MESOS_LEADER_DIR"/5050-master_roles.json" | awk '{ printf "%-80s %-40s\n", $1, $2}'
+  # Print framework summary for a given framework name
+  elif [[ $2 == "$(jq -r '.roles[] | "\(.name)"' $MESOS_LEADER_DIR"/5050-master_roles.json" | grep -i $2)" ]]; then
+    jq '.roles[] | select(.name == "'$2'")' $MESOS_LEADER_DIR"/5050-master_roles.json"
   # If there are no matches for parameter(s) print error and usage
   else
     echo "ERROR: Command not found."
-    echo "Print role usage here, etc."
+    echo "Print framework usage here, etc."
   fi
-# If command is naked, print usage
-elif [[ $1 == "role" && -z $2 ]]; then
-  echo "Print role usage here, etc."
 fi
 
 
 
 
+
 # echo "nonexit"
 # echo "nonexit"
 # echo "nonexit"
 # echo "nonexit"
 # echo "nonexit"
+
+
+
+#### fix things
