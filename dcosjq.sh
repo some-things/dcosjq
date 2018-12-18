@@ -68,28 +68,33 @@ done
 # Framework
 #####
 # WIP
-if [[ $1 == "framework" && $# -eq 1 ]]; then
+if [[ $1 == "framework" ]]; then
   # If naked, print usage
   if [[ $# -eq 1 ]]; then
     echo "Print framework usage here, etc."
-  fi
-elif [[ $1 == "framework" && $# -ge 2 ]]; then
-  # Framework list
-  if [[ $2 == "list" ]]; then
-    echo -e "ID NAME" | awk '{ printf "%-80s %-40s\n", $1, $2}'
-    jq -r '.frameworks[] | "\(.id) \(.name)"' $MESOS_LEADER_DIR"/5050-master_state-summary.json" | awk '{ printf "%-80s %-40s\n", $1, $2}'
-  # Print framework summary for a given framework name
-  elif [[ $2 == "$(jq -r '.frameworks[] | "\(.id)"' $MESOS_LEADER_DIR"/5050-master_state-summary.json" | grep -i $2)" && $# -eq 2 ]]; then
-    jq '.frameworks[] | select(.id == "'$2'")' $MESOS_LEADER_DIR"/5050-master_state-summary.json"
-  # If there are no matches for parameter(s) print error and usage
-  elif [[ $2 == "$(jq -r '.frameworks[] | "\(.id)"' $MESOS_LEADER_DIR"/5050-master_state-summary.json" | grep -i $2)" && $# -ge 3 ]]; then
-    if [[ $3 == "agents" ]]; then
-      echo -e "ID"
-      jq -r '.frameworks[] | select(.id =="'$2'") | .slave_ids[]' $MESOS_LEADER_DIR"/5050-master_state-summary.json"
+  elif [[ $# -gt 1 ]]; then
+    if [[ $# -eq 2 ]]; then
+      # Framework list
+      if [[ $2 == "list" ]]; then
+        echo -e "ID NAME" | awk '{ printf "%-80s %-40s\n", $1, $2}'
+        jq -r '.frameworks[] | "\(.id) \(.name)"' $MESOS_LEADER_DIR"/5050-master_state-summary.json" | awk '{ printf "%-80s %-40s\n", $1, $2}'
+        # Print framework summary for a given framework name
+      elif [[ $2 == "$(jq -r '.frameworks[] | "\(.id)"' $MESOS_LEADER_DIR"/5050-master_state-summary.json" | grep -i $2)" ]]; then
+        jq '.frameworks[] | select(.id == "'$2'")' $MESOS_LEADER_DIR"/5050-master_state-summary.json"
+      else
+        # Subcommand/framwork-id not found
+        echo "ERROR: '$2' is not a valid command or framework-id. Please try again."
+        echo "Print framework usage here, etc."
+      fi
+    elif [[ $# -gt 2 ]]; then
+      if [[ $2 == "$(jq -r '.frameworks[] | "\(.id)"' $MESOS_LEADER_DIR"/5050-master_state-summary.json" | grep -i $2)" && $# -ge 3 ]]; then
+        # Print agents for a given framework
+        if [[ $3 == "agents" ]]; then
+          echo -e "ID"
+          jq -r '.frameworks[] | select(.id =="'$2'") | .slave_ids[]' $MESOS_LEADER_DIR"/5050-master_state-summary.json"
+        fi
+      fi
     fi
-  else
-    echo "ERROR: Command not found."
-    echo "Print framework usage here, etc."
   fi
 fi
 
