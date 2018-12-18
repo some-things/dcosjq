@@ -1,18 +1,27 @@
 #!/bin/bash
 
+# TODO:
+########################
 # framework
 # agent
 # role
 # offers(?)
-
+#########################
 # framework - prints framework options
 # framework list - prints frameworks (fmt: name - id)
 # framework <framework-id> agents
 # framework <framework-id> roles
-#
+#########################
 # agent - prints agent options
 # agent list - prints agents (fmt: hostname - id)
 # agent <agent-id> - prints info about a particular agent (opts: {{used,free,reserved}resources, roles, frameworks})
+#########################
+
+
+###
+# Need to refactor all of the -ge -eq stuff so that the evaluations aren't repeated
+###
+
 
 #####
 # Pre-flight checks
@@ -64,15 +73,20 @@ if [[ $1 == "framework" && $# -eq 1 ]]; then
   if [[ $# -eq 1 ]]; then
     echo "Print framework usage here, etc."
   fi
-elif [[ $1 == "framework" && $# -eq 2 ]]; then
+elif [[ $1 == "framework" && $# -ge 2 ]]; then
   # Framework list
   if [[ $2 == "list" ]]; then
     echo -e "ID NAME" | awk '{ printf "%-80s %-40s\n", $1, $2}'
     jq -r '.frameworks[] | "\(.id) \(.name)"' $MESOS_LEADER_DIR"/5050-master_state-summary.json" | awk '{ printf "%-80s %-40s\n", $1, $2}'
   # Print framework summary for a given framework name
-  elif [[ $2 == "$(jq -r '.frameworks[] | "\(.name)"' $MESOS_LEADER_DIR"/5050-master_state-summary.json" | grep -i $2)" ]]; then
-    jq '.frameworks[] | select(.name == "'$2'")' $MESOS_LEADER_DIR"/5050-master_state-summary.json"
+  elif [[ $2 == "$(jq -r '.frameworks[] | "\(.id)"' $MESOS_LEADER_DIR"/5050-master_state-summary.json" | grep -i $2)" && $# -eq 2 ]]; then
+    jq '.frameworks[] | select(.id == "'$2'")' $MESOS_LEADER_DIR"/5050-master_state-summary.json"
   # If there are no matches for parameter(s) print error and usage
+  elif [[ $2 == "$(jq -r '.frameworks[] | "\(.id)"' $MESOS_LEADER_DIR"/5050-master_state-summary.json" | grep -i $2)" && $# -ge 3 ]]; then
+    if [[ $3 == "agents" ]]; then
+      echo -e "ID"
+      jq -r '.frameworks[] | select(.id =="'$2'") | .slave_ids[]' $MESOS_LEADER_DIR"/5050-master_state-summary.json"
+    fi
   else
     echo "ERROR: Command not found."
     echo "Print framework usage here, etc."
@@ -137,3 +151,10 @@ fi
 
 
 #### fix things
+
+
+# agent
+#     - cpus
+#     - memory
+#     - disk
+#     - gpus
