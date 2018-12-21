@@ -95,7 +95,7 @@ if [[ $1 == "framework" ]]; then
         # Framework list
         printFrameworkList
       elif [[ $2 == "$(jq -r '.frameworks[] | "\(.id)"' $MESOS_STATE_SUMMARY | grep -i $2)" ]]; then
-        FRAMEWORK_ID="$2"
+        FRAMEWORK_ID=$2
         # Print framework summary for a given framework-id
         printFrameworkIDSummary
       else
@@ -106,6 +106,7 @@ if [[ $1 == "framework" ]]; then
     elif [[ $# -gt 2 ]]; then
       if [[ $2 == "$(jq -r '.frameworks[] | "\(.id)"' $MESOS_STATE_SUMMARY | grep -i $2)" && $# -ge 3 ]]; then
         if [[ $3 == "agents" ]]; then
+          FRAMEWORK_ID=$2
           # Print agents for a given framework
           printFrameworkIDAgents
         fi
