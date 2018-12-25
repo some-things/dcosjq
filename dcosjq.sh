@@ -9,7 +9,7 @@
 # offers(?)
 #########################
 # framework - prints framework options
-# framework list - prints frameworks (fmt: name - id)
+# framework list - prints frameworks
 # framework <framework-id> agents
 # framework <framework-id> roles
 #########################
@@ -18,9 +18,8 @@
 # agent <agent-id> - prints info about a particular agent (opts: {{used,free,reserved}resources, roles, frameworks})
 #########################
 
-###
-# Need to refactor all of the -ge -eq stuff so that the evaluations aren't repeated
-###
+# Add fix so that this can be run from any dir within a bundle
+
 
 #####
 # Pre-flight checks
@@ -85,32 +84,31 @@ printFrameworkIDAgents () {
   jq -r '.frameworks[] | select(.id == "'$FRAMEWORK_ID'") | .slave_ids[]' $MESOS_STATE_SUMMARY
 }
 
+printFrameworkIDTasks () {
+  jq '.frameworks[] | select(.id == "'$FRAMEWORK_ID'") | .tasks[] | {id: .id, name: .name, role: .role, slave_id: .slave_id, state: .state}' $MESOS_LEADER_DIR/5050-master_frameworks.json
+}
+
 if [[ $1 == "framework" ]]; then
   if [[ $# -eq 1 ]]; then
     # If naked, print usage
     echo "Print framework usage here, etc."
   elif [[ $# -gt 1 ]]; then
-    if [[ $# -eq 2 ]]; then
-      if [[ $2 == "list" ]]; then
-        # Framework list
-        printFrameworkList
-      elif [[ $2 == "$(jq -r '.frameworks[] | "\(.id)"' $MESOS_STATE_SUMMARY | grep -i $2)" ]]; then
-        FRAMEWORK_ID=$2
-        # Print framework summary for a given framework-id
+    if [[ $2 == "list" ]]; then
+      # Framework list
+      printFrameworkList
+    elif [[ ! -z $(jq -r '.frameworks[] | select(.id == "'$2'") | "\(.id)"' $MESOS_STATE_SUMMARY) ]]; then
+      FRAMEWORK_ID=$2
+      if [[ $# -eq 2 ]]; then
         printFrameworkIDSummary
-      else
-        # Subcommand/framework-id not found
-        echo "ERROR: '$2' is not a valid command or framework-id. Please try again."
-        echo "Print framework usage here, etc."
+      elif [[ $3 == "agents" ]]; then
+        printFrameworkIDAgents
+      elif [[ $3 == "tasks" ]]; then
+        printFrameworkIDTasks
       fi
-    elif [[ $# -gt 2 ]]; then
-      if [[ $2 == "$(jq -r '.frameworks[] | "\(.id)"' $MESOS_STATE_SUMMARY | grep -i $2)" && $# -ge 3 ]]; then
-        if [[ $3 == "agents" ]]; then
-          FRAMEWORK_ID=$2
-          # Print agents for a given framework
-          printFrameworkIDAgents
-        fi
-      fi
+    else
+      # Subcommand/framework-id not found
+      echo "ERROR: '$2' is not a valid command or framework-id. Please try again."
+      echo "Print framework usage here, etc."
     fi
   fi
 fi
@@ -125,6 +123,10 @@ fi
 printAgentList () {
   echo -e "ID HOSTNAME" | awk '{ printf "%-80s %-40s\n", $1, $2}'
   jq -r '.slaves[] | "\(.id) \(.hostname)"' $MESOS_STATE_SUMMARY | awk '{ printf "%-80s %-40s\n", $1, $2}'
+}
+
+printAgentSummary () {
+  jq '.slaves[] | select(.id == "'$AGENT_ID'") | .' $MESOS_STATE_SUMMARY
 }
 
 # printAgentResourcesCPU () {
@@ -192,23 +194,31 @@ printAgentResources () {
   echo "└────────────────────────────────────────────────────────"
 }
 
+printAgentFrameworks () {
+  jq '.slaves[] | select(.id == "'$AGENT_ID'") | .framework_ids[]' $MESOS_STATE_SUMMARY
+}
+
 if [[ $1 == "agent" ]]; then
-  # If naked, print usage
   if [[ $# -eq 1 ]]; then
+    # If naked, print usage
     echo "Print agent usage here, etc."
   elif [[ $# -gt 1 ]]; then
-    if [[ $# -eq 2 ]]; then
-      if [[ $2 == "list" ]]; then
-        # Agent list
-        printAgentList
-      elif [[ $2 == "$(jq -r '.slaves[] | "\(.id)"' $MESOS_STATE_SUMMARY | grep -i $2)" ]]; then
-        AGENT_ID=$2
-        # Move printAgentResources to dcosjq <agent-id> resources and have naked <agent-id> be an overview of everything agent related.
+    if [[ $2 == "list" ]]; then
+      printAgentList
+    elif [[ ! -z $(jq -r '.slaves[] | select(.id == "'$2'") | "\(.id)"' $MESOS_STATE_SUMMARY) ]]; then
+      AGENT_ID=$2
+      if [[ $# -eq 2 ]]; then
+        printAgentSummary
+      elif [[ $3 == "resources" ]]; then
         printAgentResources
-      else
-        echo "ERROR: '$2' is not a valid command or agent-id. Please try again."
-        echo "Print framework usage here, etc."
+      elif [[ $3 == "frameworks" ]]; then
+        printAgentFrameworks
+      elif [[ $3 == "tasks" ]]; then
+        echo "print tasks from agent-id"
       fi
+    else
+      echo "ERROR: '$2' is not a valid command or agent-id. Please try again."
+      echo "Print framework usage here, etc."
     fi
   fi
 fi
@@ -229,24 +239,28 @@ printRoleSummary () {
   jq '.roles[] | select(.name == "'$ROLE_NAME'")' $MESOS_LEADER_DIR"/5050-master_roles.json"
 }
 
+printRoleAgents () {
+  jq '.frameworks[].tasks[] | select(.role == "'$ROLE_NAME'") | .slave_id' $MESOS_LEADER_DIR/5050-master_frameworks.json | sort -u
+}
+
 if [[ $1 == "role" ]]; then
-  # If naked, print usage
   if [[ $# -eq 1 ]]; then
+    # If naked, print usage
     echo "Print role usage here, etc."
   elif [[ $# -gt 1 ]]; then
-    if [[ $# -eq 2 ]]; then
-      if [[ $2 == "list" ]]; then
-        # Role list
-        printRoleList
-      elif [[ $2 == "$(jq -r '.roles[] | "\(.name)"' $MESOS_LEADER_DIR"/5050-master_roles.json" | grep -i $2)" ]]; then
-        ROLE_NAME="$2"
-        # Print role summary for a given role name
+    if [[ $2 == "list" ]]; then
+      printRoleList
+    elif [[ ! -z $(jq -r '.roles[] | select(.name == "'$2'" ) | "\(.name)"' $MESOS_LEADER_DIR"/5050-master_roles.json") ]]; then
+      ROLE_NAME=$2
+      if [[ $# -eq 2 ]]; then
         printRoleSummary
-      else
-        # Subcommand/framework-id not found
-        echo "ERROR: '$2' is not a valid command or role. Please try again."
-        echo "Print framework usage here, etc."
+      elif [[ $3 == "agents" ]]; then
+        printRoleAgents
       fi
+    else
+      # Subcommand/framework-id not found
+      echo "ERROR: '$2' is not a valid command or role. Please try again."
+      echo "Print role usage here, etc."
     fi
   fi
 fi
@@ -266,7 +280,7 @@ fi
 # echo "nonexit"
 # echo "nonexit"
 # echo "nonexit"
-
+# jq '.frameworks[] | select(.roles[] == "kubernetes-role") | .tasks[].slave_id' 5050-master_frameworks.json
 
 
 #### fix things
