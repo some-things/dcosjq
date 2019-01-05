@@ -21,7 +21,7 @@ if [[ $1 == "extract" ]]; then
     gunzip -q -r "${BUNDLE_DIR}"
     # Move the compressed log bundle to the 'storage' directory; Comment the next 2 lines out to not move the original file.
     mkdir -p "${TICKET_DIR}/storage"
-    mv $2 "${TICKET_DIR}/storage/${2%%.zip}"
+    mv $2 "${TICKET_DIR}/storage/${2}"
     echo "Finished extracting bundle to '${BUNDLE_DIR}'."
     # read -p "Finished extracting bundle to '${BUNDLE_DIR}'. Navigate there now? (y/n) " NAV_CALL
     # if [[ $(echo $NAV_CALL | tr '[:upper:]' '[:lower:]') == "y" || $(echo $NAV_CALL | tr '[:upper:]' '[:lower:]') == "yes" ]]; then
