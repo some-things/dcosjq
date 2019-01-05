@@ -1,5 +1,41 @@
 #!/bin/bash
 
+##################################################
+##################################################
+##################################################
+#####
+# Extract
+#####
+# Set the full path to where you would like to have bundle and ticket files and folders created.
+#####
+BASE_DIR="${HOME}/Documents/logs/tickets"
+
+# BASE_DIR must be set to a valid path for any 'extract' commands to function properly
+if [[ $1 == "extract" ]]; then
+  if [[ ! -z $2 ]]; then
+    read -p "Ticket number: " TICKET_NUM
+    TICKET_DIR="${BASE_DIR}/${TICKET_NUM}"
+    mkdir -p "${TICKET_DIR}"
+    BUNDLE_DIR="${BASE_DIR}/${TICKET_NUM}/${2%%.zip}"
+    unzip -q -d "${BUNDLE_DIR}" "${2}"
+    gunzip -q -r "${BUNDLE_DIR}"
+    # Move the compressed log bundle to the 'storage' directory; Comment the next 2 lines out to not move the original file.
+    mkdir -p "${TICKET_DIR}/storage"
+    mv $2 "${TICKET_DIR}/storage/${2%%.zip}"
+    echo "Finished extracting bundle to '${BUNDLE_DIR}'."
+    # read -p "Finished extracting bundle to '${BUNDLE_DIR}'. Navigate there now? (y/n) " NAV_CALL
+    # if [[ $(echo $NAV_CALL | tr '[:upper:]' '[:lower:]') == "y" || $(echo $NAV_CALL | tr '[:upper:]' '[:lower:]') == "yes" ]]; then
+    #   cd "${BUNDLE_DIR}"
+    #   echo "Working directory changed to ${BUNDLE_DIR}. Happy debugging!"
+    # else
+    #   echo "Done"
+    # fi
+  else
+    echo "Please specify a compressed DC/OS diagnostic bundle file to extract."
+  fi
+  exit
+fi
+
 # TODO:
 ########################
 # master
@@ -19,7 +55,6 @@
 #########################
 
 # Add fix so that this can be run from any dir within a bundle
-
 
 #####
 # Pre-flight checks
@@ -62,6 +97,19 @@ for i in $(find ./*master* -type f -name 5050-registrar_1__registry.json); do
     fi
   fi
 done
+
+##################################################
+##################################################
+##################################################
+#####
+# Master
+#####
+# WIP
+if [[ $1 == "master" ]]; then
+  if [[ $# -eq 1 ]]; then
+    echo $MESOS_LEADER_HOSTNAME
+  fi
+fi
 
 ##################################################
 ##################################################
@@ -265,22 +313,12 @@ if [[ $1 == "role" ]]; then
   fi
 fi
 
-
 #####
 # Offer
 #####
 
-
-
-
-
-
-# echo "nonexit"
-# echo "nonexit"
-# echo "nonexit"
-# echo "nonexit"
 # echo "nonexit"
 # jq '.frameworks[] | select(.roles[] == "kubernetes-role") | .tasks[].slave_id' 5050-master_frameworks.json
 
-
+#### add things
 #### fix things
