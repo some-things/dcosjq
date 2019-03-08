@@ -119,8 +119,7 @@ fi
 #####
 # WIP
 printFrameworkList () {
-  echo -e "ID NAME" | awk '{ printf "%-80s %-40s\n", $1, $2}'
-  jq -r '.frameworks[] | "\(.id) \(.name)"' $MESOS_STATE_SUMMARY | awk '{ printf "%-80s %-40s\n", $1, $2}'
+  echo -e "ID NAME\n $(jq -r '.frameworks[] | "\(.id) \(.name)"' $MESOS_STATE_SUMMARY)" | column -t
 }
 
 printFrameworkIDSummary () {
@@ -128,12 +127,11 @@ printFrameworkIDSummary () {
 }
 
 printFrameworkIDAgents () {
-  echo -e "ID"
-  jq -r '.frameworks[] | select(.id == "'$FRAMEWORK_ID'") | .slave_ids[]' $MESOS_STATE_SUMMARY
+  echo -e "ID\n $(jq -r '.frameworks[] | select(.id == "'$FRAMEWORK_ID'") | .slave_ids[]' $MESOS_STATE_SUMMARY)" | column -t
 }
 
 printFrameworkIDTasks () {
-  jq '.frameworks[] | select(.id == "'$FRAMEWORK_ID'") | .tasks[] | {id: .id, name: .name, role: .role, slave_id: .slave_id, state: .state}' $MESOS_LEADER_DIR/5050-master_frameworks.json
+  echo -e "ID NAME ROLE SLAVE_ID STATE\n $(jq -r '.frameworks[] | select(.id == "'$FRAMEWORK_ID'") | .tasks[] | "\(.id) \(.name) \(.role) \(.slave_id) \(.state)"' $MESOS_LEADER_DIR/5050-master_frameworks.json | sort)" | column -t
 }
 
 if [[ $1 == "framework" ]]; then
@@ -169,8 +167,7 @@ fi
 #####
 # WIP
 printAgentList () {
-  echo -e "ID HOSTNAME" | awk '{ printf "%-80s %-40s\n", $1, $2}'
-  jq -r '.slaves[] | "\(.id) \(.hostname)"' $MESOS_STATE_SUMMARY | awk '{ printf "%-80s %-40s\n", $1, $2}'
+  echo -e "ID HOSTNAME\n $(jq -r '.slaves[] | "\(.id) \(.hostname)"' $MESOS_STATE_SUMMARY | sort -k 2)" | column -t
 }
 
 printAgentSummary () {
@@ -205,6 +202,7 @@ printAgentSummary () {
 #   UNRESERVED_GPUS="$(jq '.slaves[] | select(.id == '$2') | .unreserved_resources.cpus' $MESOS_STATE_SUMMARY)"
 # }
 
+# Need to clean this up
 printAgentResources () {
   TOTAL_CPUS="$(jq '.slaves[] | select(.id == "'$AGENT_ID'") | .resources.cpus' $MESOS_STATE_SUMMARY)"
   TOTAL_MEM="$(jq '.slaves[] | select(.id == "'$AGENT_ID'") | .resources.mem' $MESOS_STATE_SUMMARY)"
