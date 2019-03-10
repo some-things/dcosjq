@@ -1,13 +1,21 @@
 #!/bin/bash
 
-##################################################
-##################################################
-##################################################
+# TODO:
+########################
+# master
+# agent
+# framework
+# role
+# offers(?)
+# unreachable
+# Add fix so that this can be run from any dir within a bundle
+#########################
+
 #####
 # Extract
 #####
+
 # Set the full path to where you would like to have bundle and ticket files and folders created.
-#####
 BASE_DIR="${HOME}/Documents/logs/tickets"
 
 # BASE_DIR must be set to a valid path for any 'extract' commands to function properly
@@ -23,41 +31,14 @@ if [[ $1 == "extract" ]]; then
     mkdir -p "${TICKET_DIR}/storage"
     mv $2 "${TICKET_DIR}/storage/${2}"
     echo "Finished extracting bundle to '${BUNDLE_DIR}'."
-    # read -p "Finished extracting bundle to '${BUNDLE_DIR}'. Navigate there now? (y/n) " NAV_CALL
-    # if [[ $(echo $NAV_CALL | tr '[:upper:]' '[:lower:]') == "y" || $(echo $NAV_CALL | tr '[:upper:]' '[:lower:]') == "yes" ]]; then
-    #   cd "${BUNDLE_DIR}"
-    #   echo "Working directory changed to ${BUNDLE_DIR}. Happy debugging!"
-    # else
-    #   echo "Done"
-    # fi
   else
     echo "Please specify a compressed DC/OS diagnostic bundle file to extract."
   fi
   exit
 fi
 
-# TODO:
-########################
-# master
-# agent
-# framework
-# role
-# offers(?)
-#########################
-# framework - prints framework options
-# framework list - prints frameworks
-# framework <framework-id> agents
-# framework <framework-id> roles
-#########################
-# agent - prints agent options
-# agent list - prints agents (fmt: hostname - id)
-# agent <agent-id> - prints info about a particular agent (opts: {{used,free,reserved}resources, roles, frameworks})
-#########################
-
-# Add fix so that this can be run from any dir within a bundle
-
 #####
-# Pre-flight checks
+# JQ/bundle pre-flight checks
 #####
 # Check for jq
 if [[ -z $(which jq) ]]; then
@@ -76,7 +57,7 @@ fi
 #####
 # Find the leading Mesos master directory
 #####
-# WIP NEED TO ADD A CHECK THAT HOSTNAME ISN'T NULL!
+# NEED TO ADD A CHECK THAT HOSTNAME ISN'T NULL!
 # echo "ERROR: Hostname field empty. Please verify that ${MESOS_LEADER_DIR}/5050-registrar_1__registry.json has valid information."
 for i in $(find ./*master* -type f -name 5050-registrar_1__registry.json); do
   if [[ ! -z $(jq '.master.info.hostname' $i | grep -vi 'null\|\[\|\]' | cut -d '"' -f 2) ]]; then
@@ -98,26 +79,19 @@ for i in $(find ./*master* -type f -name 5050-registrar_1__registry.json); do
   fi
 done
 
-##################################################
-##################################################
-##################################################
 #####
 # Master
 #####
-# WIP
 if [[ $1 == "master" ]]; then
   if [[ $# -eq 1 ]]; then
+    # Print Mesos leader 'hostname' (IP)
     echo $MESOS_LEADER_HOSTNAME
   fi
 fi
 
-##################################################
-##################################################
-##################################################
 #####
 # Framework
 #####
-# WIP
 printFrameworkList () {
   echo -e "ID NAME\n $(jq -r '.frameworks[] | "\(.id) \(.name)"' $MESOS_STATE_SUMMARY)" | column -t
 }
@@ -145,10 +119,13 @@ if [[ $1 == "framework" ]]; then
     elif [[ ! -z $(jq -r '.frameworks[] | select(.id == "'$2'") | "\(.id)"' $MESOS_STATE_SUMMARY) ]]; then
       FRAMEWORK_ID=$2
       if [[ $# -eq 2 ]]; then
+        # Print summary for <framework-id>
         printFrameworkIDSummary
       elif [[ $3 == "agents" ]]; then
+        # Print agents associated with <framework-id>
         printFrameworkIDAgents
       elif [[ $3 == "tasks" ]]; then
+        # Print tasks associated with <framework-id>
         printFrameworkIDTasks
       fi
     else
@@ -159,13 +136,9 @@ if [[ $1 == "framework" ]]; then
   fi
 fi
 
-##################################################
-##################################################
-##################################################
 #####
 # Agent
 #####
-# WIP
 printAgentList () {
   echo -e "ID HOSTNAME\n $(jq -r '.slaves[] | "\(.id) \(.hostname)"' $MESOS_STATE_SUMMARY | sort -k 2)" | column -t
 }
@@ -174,35 +147,7 @@ printAgentSummary () {
   jq '.slaves[] | select(.id == "'$AGENT_ID'") | .' $MESOS_STATE_SUMMARY
 }
 
-# printAgentResourcesCPU () {
-#   TOTAL_CPUS="$(jq '.slaves[] | select(.id == '$2') | .resources.cpus' $MESOS_STATE_SUMMARY)"
-#   USED_CPUS="$(jq '.slaves[] | select(.id == '$2') | .used_resources.cpus' $MESOS_STATE_SUMMARY)"
-#   FREE_CPUS="$(bc <<< "$TOTAL_CPUS - $USED_CPUS")"
-#   UNRESERVED_CPUS="$(jq '.slaves[] | select(.id == '$2') | .unreserved_resources.cpus' $MESOS_STATE_SUMMARY)"
-# }
-#
-# printAgentResourcesMEM () {
-#   TOTAL_MEM="$(jq '.slaves[] | select(.id == '$2') | .resources.mem' $MESOS_STATE_SUMMARY)"
-#   USED_MEM="$(jq '.slaves[] | select(.id == '$2') | .used_resources.mem' $MESOS_STATE_SUMMARY)"
-#   FREE_MEM="$(bc <<< "$TOTAL_MEM - $USED_MEM")"
-#   UNRESERVED_MEM="$(jq '.slaves[] | select(.id == '$2') | .unreserved_resources.mem' $MESOS_STATE_SUMMARY)"
-# }
-#
-# printAgentResourcesDisk () {
-#   TOTAL_DISK="$(jq '.slaves[] | select(.id == '$2') | .resources.disk' $MESOS_STATE_SUMMARY)"
-#   USED_DISK="$(jq '.slaves[] | select(.id == '$2') | .used_resources.disk' $MESOS_STATE_SUMMARY)"
-#   FREE_DISK="$(bc <<< "$TOTAL_DISK - $USED_DISK")"
-#   UNRESERVED_DISK="$(jq '.slaves[] | select(.id == '$2') | .unreserved_resources.disk' $MESOS_STATE_SUMMARY)"
-# }
-#
-# printAgentResourcesGPUS () {
-#   TOTAL_GPUS="$(jq '.slaves[] | select(.id == '$2') | .resources.disk' $MESOS_STATE_SUMMARY)"
-#   USED_GPUS="$(jq '.slaves[] | select(.id == '$2') | .used_resources.disk' $MESOS_STATE_SUMMARY)"
-#   FREE_GPUS="$(bc <<< "$TOTAL_GPUS - $USED_GPUS")"
-#   UNRESERVED_GPUS="$(jq '.slaves[] | select(.id == '$2') | .unreserved_resources.cpus' $MESOS_STATE_SUMMARY)"
-# }
-
-# Need to clean this up
+# Need to clean this up - AGENT-ID RESOURCE TOTAL UNRESERVED RESERVED FREE?
 printAgentResources () {
   TOTAL_CPUS="$(jq '.slaves[] | select(.id == "'$AGENT_ID'") | .resources.cpus' $MESOS_STATE_SUMMARY)"
   TOTAL_MEM="$(jq '.slaves[] | select(.id == "'$AGENT_ID'") | .resources.mem' $MESOS_STATE_SUMMARY)"
@@ -246,21 +191,25 @@ printAgentFrameworks () {
 
 if [[ $1 == "agent" ]]; then
   if [[ $# -eq 1 ]]; then
-    # If naked, print usage
+    # Print usage
     echo "Print agent usage here, etc."
   elif [[ $# -gt 1 ]]; then
     if [[ $2 == "list" ]]; then
+      # Print agent list (Need to add Mesos 'hostname' (IP) here)
       printAgentList
     elif [[ ! -z $(jq -r '.slaves[] | select(.id == "'$2'") | "\(.id)"' $MESOS_STATE_SUMMARY) ]]; then
       AGENT_ID=$2
       if [[ $# -eq 2 ]]; then
+        # Print <agent-id> summary
         printAgentSummary
       elif [[ $3 == "resources" ]]; then
+        # Print <agent-id> resources
         printAgentResources
       elif [[ $3 == "frameworks" ]]; then
+        # Print <agent-id> frameworks
         printAgentFrameworks
       elif [[ $3 == "tasks" ]]; then
-        echo "print tasks from agent-id"
+        # Print <agent-id> tasks
       fi
     else
       echo "ERROR: '$2' is not a valid command or agent-id. Please try again."
@@ -269,13 +218,9 @@ if [[ $1 == "agent" ]]; then
   fi
 fi
 
-##################################################
-##################################################
-##################################################
 #####
 # Role
 #####
-# WIP
 printRoleList () {
   echo -e "NAME" | awk '{ printf "%-80s %-40s\n", $1, $2}'
   jq -r '.roles[] | "\(.name)"' $MESOS_LEADER_DIR"/5050-master_roles.json" | awk '{ printf "%-80s %-40s\n", $1, $2}'
@@ -291,16 +236,19 @@ printRoleAgents () {
 
 if [[ $1 == "role" ]]; then
   if [[ $# -eq 1 ]]; then
-    # If naked, print usage
+    # Print usage
     echo "Print role usage here, etc."
   elif [[ $# -gt 1 ]]; then
     if [[ $2 == "list" ]]; then
+      # Print role list
       printRoleList
     elif [[ ! -z $(jq -r '.roles[] | select(.name == "'$2'" ) | "\(.name)"' $MESOS_LEADER_DIR"/5050-master_roles.json") ]]; then
       ROLE_NAME=$2
       if [[ $# -eq 2 ]]; then
+        # Print <role-id> summary
         printRoleSummary
       elif [[ $3 == "agents" ]]; then
+        # Print <role-id> agents
         printRoleAgents
       fi
     else
@@ -310,13 +258,3 @@ if [[ $1 == "role" ]]; then
     fi
   fi
 fi
-
-#####
-# Offer
-#####
-
-# echo "nonexit"
-# jq '.frameworks[] | select(.roles[] == "kubernetes-role") | .tasks[].slave_id' 5050-master_frameworks.json
-
-#### add things
-#### fix things
