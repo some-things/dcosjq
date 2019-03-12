@@ -210,6 +210,7 @@ if [[ $1 == "agent" ]]; then
         printAgentFrameworks
       elif [[ $3 == "tasks" ]]; then
         # Print <agent-id> tasks
+        echo "Not implemented."
       fi
     else
       echo "ERROR: '$2' is not a valid command or agent-id. Please try again."
