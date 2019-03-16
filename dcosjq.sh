@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # TODO:
 ########################
@@ -258,4 +258,47 @@ if [[ $1 == "role" ]]; then
       echo "Print role usage here, etc."
     fi
   fi
+fi
+
+#####
+# Checks
+#####
+if [[ $1 == "checks" ]]; then
+  #####
+  # State Checks (TODO: Eventually make this way more readable... Single line check marks or X and color output.)
+  #####
+  # DC/OS systemd unit service health check (TODO: Add support for 3dt-health.json)
+  echo "#####"
+  echo "# DC/OS systemd unit service failure check"
+  echo "#####"
+  FAILED_UNITS="$(jq -r '"\(.node_role) \(.ip) \(.hostname) \(.units[] | select(.health != 0) | .id + " " + (.health | tostring))"' */dcos-diagnostics-health.json)"
+  if [[ ! -z $FAILED_UNITS ]]; then
+    echo -e "NODE_TYPE IP HOSTNAME SERVICE STATUS\n$FAILED_UNITS" | column -t
+  else
+    echo "All components appear healthy."
+  fi
+  echo
+  # Unreachable agent check
+  echo "#####"
+  echo "# Unreachable agent check"
+  echo "#####"
+  UNREACHABLE_AGENTS="$(jq -r '"\(.unreachable.slaves[] | .id.value + " " + (.timestamp.nanoseconds|tostring))"' ${MESOS_LEADER_DIR}/5050-registrar_1__registry.json)"
+  if [[ ! -z $UNREACHABLE_AGENTS ]]; then
+    echo -e "SLAVE_ID TIME_UNREACHABLE\n$UNREACHABLE_AGENTS" | column -t
+  else
+    echo "No agents listed as unreachable."
+  fi
+  echo
+  #####
+  # Log Checks
+  #####
+fi
+
+#####
+# Beautify
+#####
+if [[ $1 == "beautify" ]]; then
+  for i in $(find . -type f -name '*.json'); do
+    cat <<< "$(jq '.' < $i)" > $i
+  done
 fi
