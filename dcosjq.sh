@@ -8,7 +8,7 @@
 # role
 # offers(?)
 # unreachable
-# Add fix so that this can be run from any dir within a bundle
+# Add fix so that this can be run from any dir within a bundle (Make sure to remove the associated section from 'pre-flight checks' when implementing this...)
 #########################
 
 #####
@@ -261,13 +261,13 @@ if [[ $1 == "role" ]]; then
 fi
 
 #####
-# Checks
+# Checks (TODO: Eventually make this way more readable... Single line check marks or X and color output.)
 #####
 if [[ $1 == "checks" ]]; then
   #####
-  # State Checks (TODO: Eventually make this way more readable... Single line check marks or X and color output.)
+  # State Checks
   #####
-  # DC/OS verion check
+  # DC/OS verion uniqueness check
   echo "#####"
   echo "# DC/OS systemd unit service failure check"
   echo "#####"
