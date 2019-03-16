@@ -264,46 +264,42 @@ fi
 # Checks (TODO: Eventually make this way more readable... Single line check marks or X and color output.)
 #####
 if [[ $1 == "checks" ]]; then
-  #####
+  #########################
   # State Checks
+  #########################
   #####
   # DC/OS verion uniqueness check
-  echo "#####"
-  echo "# DC/OS systemd unit service failure check"
-  echo "#####"
+  #####
   DCOS_VERSIONS="$(jq -r '"\(.node_role) \(.ip) \(.dcos_version)"' */dcos-diagnostics-health.json | sort -k 3)"
   if [[ $(echo "$DCOS_VERSIONS" | awk '{print$3}' | uniq | wc -l) -gt 1 ]]; then
-    echo "Multiple DC/OS versions detected:"
+    echo -e "\xE2\x9D\x8C Multiple DC/OS versions detected:"
     echo -e "NODE_TYPE IP DCOS_VERSION\n$DCOS_VERSIONS" | column -t
   else
-    echo "All nodes on the same DC/OS version: $(echo $DCOS_VERSIONS | awk '{print$3}' | uniq)"
+    echo -e "\xE2\x9C\x94 All nodes on the same DC/OS version: $(echo $DCOS_VERSIONS | awk '{print$3}' | uniq)"
   fi
-  echo
-  # DC/OS systemd unit service health check (TODO: Add support for 3dt-health.json)
-  echo "#####"
-  echo "# DC/OS systemd unit service failure check"
-  echo "#####"
+  #####
+  # DC/OS component healthiness check (TODO: Add support for 3dt-health.json)
+  #####
   FAILED_UNITS="$(jq -r '"\(.node_role) \(.ip) \(.hostname) \(.units[] | select(.health != 0) | .id + " " + (.health | tostring))"' */dcos-diagnostics-health.json)"
   if [[ ! -z $FAILED_UNITS ]]; then
+    echo -e "\xE2\x9D\x8C Failed DC/OS components found:"
     echo -e "NODE_TYPE IP HOSTNAME SERVICE STATUS\n$FAILED_UNITS" | column -t
   else
-    echo "All components appear healthy."
+    echo -e "\xE2\x9C\x94 All components report as healthy."
   fi
-  echo
+  #####
   # Unreachable agent check
-  echo "#####"
-  echo "# Unreachable agent check"
-  echo "#####"
+  #####
   UNREACHABLE_AGENTS="$(jq -r '"\(.unreachable.slaves[] | .id.value + " " + (.timestamp.nanoseconds|tostring))"' ${MESOS_LEADER_DIR}/5050-registrar_1__registry.json 2> /dev/null)"
   if [[ ! -z $UNREACHABLE_AGENTS ]]; then
+    echo -e "\xE2\x9D\x8C Unreachable agents found:"
     echo -e "SLAVE_ID TIME_UNREACHABLE\n$UNREACHABLE_AGENTS" | column -t
   else
-    echo "No agents listed as unreachable."
+    echo -e "\xE2\x9C\x94 No agents listed as unreachable."
   fi
-  echo
-  #####
-  # Log Checks
-  #####
+  #########################
+  # Log Checks (tail logs from last service started message to rule out false positives, or otherwise, from the beginning)
+  #########################
 fi
 
 #####
