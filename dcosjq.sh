@@ -267,6 +267,18 @@ if [[ $1 == "checks" ]]; then
   #####
   # State Checks (TODO: Eventually make this way more readable... Single line check marks or X and color output.)
   #####
+  # DC/OS verion check
+  echo "#####"
+  echo "# DC/OS systemd unit service failure check"
+  echo "#####"
+  DCOS_VERSIONS="$(jq -r '"\(.node_role) \(.ip) \(.dcos_version)"' */dcos-diagnostics-health.json | sort -k 3)"
+  if [[ $(echo "$DCOS_VERSIONS" | awk '{print$3}' | uniq | wc -l) -gt 1 ]]; then
+    echo "Multiple DC/OS versions detected:"
+    echo -e "NODE_TYPE IP DCOS_VERSION\n$DCOS_VERSIONS" | column -t
+  else
+    echo "All nodes on the same DC/OS version: $(echo $DCOS_VERSIONS | awk '{print$3}' | uniq)"
+  fi
+  echo
   # DC/OS systemd unit service health check (TODO: Add support for 3dt-health.json)
   echo "#####"
   echo "# DC/OS systemd unit service failure check"
