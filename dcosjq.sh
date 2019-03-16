@@ -282,7 +282,7 @@ if [[ $1 == "checks" ]]; then
   echo "#####"
   echo "# Unreachable agent check"
   echo "#####"
-  UNREACHABLE_AGENTS="$(jq -r '"\(.unreachable.slaves[] | .id.value + " " + (.timestamp.nanoseconds|tostring))"' ${MESOS_LEADER_DIR}/5050-registrar_1__registry.json)"
+  UNREACHABLE_AGENTS="$(jq -r '"\(.unreachable.slaves[] | .id.value + " " + (.timestamp.nanoseconds|tostring))"' ${MESOS_LEADER_DIR}/5050-registrar_1__registry.json 2> /dev/null)"
   if [[ ! -z $UNREACHABLE_AGENTS ]]; then
     echo -e "SLAVE_ID TIME_UNREACHABLE\n$UNREACHABLE_AGENTS" | column -t
   else
