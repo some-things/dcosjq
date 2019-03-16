@@ -90,6 +90,24 @@ if [[ $1 == "master" ]]; then
 fi
 
 #####
+# Cluster
+#####
+printClusterResources () {
+  echo -e "AGENT_ID IP RESOURCE TOTAL UNRESERVED RESERVED USED\n$(jq -r '"\(.slaves[] | (.id) + " " + (.hostname) + " CPU "+ (.resources.cpus | tostring) + " " + (.used_resources.cpus | tostring) + " " + (.unreserved_resources.cpus | tostring) + " " + (.resources.cpus - .unreserved_resources.cpus | tostring) + "\n - - MEM "+ (.resources.mem | tostring) + " " + (.used_resources.mem | tostring) + " " + (.unreserved_resources.mem | tostring) + " " + (.resources.mem - .unreserved_resources.mem | tostring) + "\n - - DISK "+ (.resources.disk | tostring) + " " + (.used_resources.disk | tostring) + " " + (.unreserved_resources.disk | tostring) + " " + (.resources.disk - .unreserved_resources.disk | tostring) + "\n - - GPU "+ (.resources.gpus | tostring) + " " + (.used_resources.gpus | tostring) + " " + (.unreserved_resources.gpus | tostring) + " " + (.resources.gpus - .unreserved_resources.gpus | tostring))"' ${MESOS_LEADER_DIR}/5050-master_state.json)" | column -t
+}
+
+if [[ $1 == "cluster" ]]; then
+  if [[ $# -eq 1 ]]; then
+    # If naked, print usage
+    echo "Print cluster usage here, etc."
+  elif [[ $# -gt 1 ]]; then
+    if [[ $2 == "resources" ]]; then
+      printClusterResources
+    fi
+  fi
+fi
+
+#####
 # Framework
 #####
 printFrameworkList () {
@@ -147,42 +165,8 @@ printAgentSummary () {
   jq '.slaves[] | select(.id == "'$AGENT_ID'") | .' $MESOS_STATE_SUMMARY
 }
 
-# Need to clean this up - AGENT-ID RESOURCE TOTAL UNRESERVED RESERVED FREE?
 printAgentResources () {
-  TOTAL_CPUS="$(jq '.slaves[] | select(.id == "'$AGENT_ID'") | .resources.cpus' $MESOS_STATE_SUMMARY)"
-  TOTAL_MEM="$(jq '.slaves[] | select(.id == "'$AGENT_ID'") | .resources.mem' $MESOS_STATE_SUMMARY)"
-  TOTAL_DISK="$(jq '.slaves[] | select(.id == "'$AGENT_ID'") | .resources.disk' $MESOS_STATE_SUMMARY)"
-  TOTAL_GPUS="$(jq '.slaves[] | select(.id == "'$AGENT_ID'") | .resources.gpus' $MESOS_STATE_SUMMARY)"
-
-  UNRESERVED_CPUS="$(jq '.slaves[] | select(.id == "'$AGENT_ID'") | .unreserved_resources.cpus' $MESOS_STATE_SUMMARY)"
-  UNRESERVED_MEM="$(jq '.slaves[] | select(.id == "'$AGENT_ID'") | .unreserved_resources.mem' $MESOS_STATE_SUMMARY)"
-  UNRESERVED_DISK="$(jq '.slaves[] | select(.id == "'$AGENT_ID'") | .unreserved_resources.disk' $MESOS_STATE_SUMMARY)"
-  UNRESERVED_GPUS="$(jq '.slaves[] | select(.id == "'$AGENT_ID'") | .unreserved_resources.gpus' $MESOS_STATE_SUMMARY)"
-
-  USED_CPUS="$(jq '.slaves[] | select(.id == "'$AGENT_ID'") | .used_resources.cpus' $MESOS_STATE_SUMMARY)"
-  USED_MEM="$(jq '.slaves[] | select(.id == "'$AGENT_ID'") | .used_resources.mem' $MESOS_STATE_SUMMARY)"
-  USED_DISK="$(jq '.slaves[] | select(.id == "'$AGENT_ID'") | .used_resources.disk' $MESOS_STATE_SUMMARY)"
-  USED_GPUS="$(jq '.slaves[] | select(.id == "'$AGENT_ID'") | .used_resources.gpus' $MESOS_STATE_SUMMARY)"
-
-  FREE_CPUS="$(bc <<< "$TOTAL_CPUS - $USED_CPUS")"
-  FREE_MEM="$(bc <<< "$TOTAL_MEM - $USED_MEM")"
-  FREE_DISK="$(bc <<< "$TOTAL_DISK - $USED_DISK")"
-  FREE_GPUS="$(bc <<< "$TOTAL_GPUS - $USED_GPUS")"
-
-  echo "┌───────── agent-id: $AGENT_ID "
-  echo "├─ CPUS: $TOTAL_CPUS"
-  echo "│     ├─ Unreserved: $UNRESERVED_CPUS / $TOTAL_CPUS"
-  echo "│     └─ Free: $FREE_CPUS / $TOTAL_CPUS"
-  echo "├─ MEM: $TOTAL_MEM"
-  echo "│     ├─ Unreserved: $UNRESERVED_MEM / $TOTAL_MEM"
-  echo "│     └─ Free: $FREE_MEM / $TOTAL_MEM"
-  echo "├─ DISK: $TOTAL_DISK"
-  echo "│     ├─ Unreserved: $UNRESERVED_DISK / $TOTAL_DISK"
-  echo "│     └─ Free: $FREE_DISK / $TOTAL_DISK"
-  echo "├─ GPUS: $TOTAL_GPUS"
-  echo "│     ├─ Unreserved: $UNRESERVED_GPUS / $TOTAL_GPUS"
-  echo "│     └─ Free: $FREE_GPUS / $TOTAL_GPUS"
-  echo "└────────────────────────────────────────────────────────"
+  echo -e "AGENT_ID IP RESOURCE TOTAL UNRESERVED RESERVED USED\n$(jq -r '"\(.slaves[] | select(.id == "'$AGENT_ID'") | (.id) + " " + (.hostname) + " CPU "+ (.resources.cpus | tostring) + " " + (.used_resources.cpus | tostring) + " " + (.unreserved_resources.cpus | tostring) + " " + (.resources.cpus - .unreserved_resources.cpus | tostring) + "\n - - MEM "+ (.resources.mem | tostring) + " " + (.used_resources.mem | tostring) + " " + (.unreserved_resources.mem | tostring) + " " + (.resources.mem - .unreserved_resources.mem | tostring) + "\n - - DISK "+ (.resources.disk | tostring) + " " + (.used_resources.disk | tostring) + " " + (.unreserved_resources.disk | tostring) + " " + (.resources.disk - .unreserved_resources.disk | tostring) + "\n - - GPU "+ (.resources.gpus | tostring) + " " + (.used_resources.gpus | tostring) + " " + (.unreserved_resources.gpus | tostring) + " " + (.resources.gpus - .unreserved_resources.gpus | tostring))"' ${MESOS_LEADER_DIR}/5050-master_state.json)" | column -t
 }
 
 printAgentFrameworks () {
@@ -223,12 +207,11 @@ fi
 # Role
 #####
 printRoleList () {
-  echo -e "NAME" | awk '{ printf "%-80s %-40s\n", $1, $2}'
-  jq -r '.roles[] | "\(.name)"' $MESOS_LEADER_DIR"/5050-master_roles.json" | awk '{ printf "%-80s %-40s\n", $1, $2}'
+  echo -e "NAME\n$(jq -r '.roles[] | "\(.name)"' $MESOS_LEADER_DIR/5050-master_roles.json)" | column -t
 }
 
 printRoleSummary () {
-  jq '.roles[] | select(.name == "'$ROLE_NAME'")' $MESOS_LEADER_DIR"/5050-master_roles.json"
+  jq '.roles[] | select(.name == "'$ROLE_NAME'")' $MESOS_LEADER_DIR/5050-master_roles.json
 }
 
 printRoleAgents () {
@@ -243,7 +226,7 @@ if [[ $1 == "role" ]]; then
     if [[ $2 == "list" ]]; then
       # Print role list
       printRoleList
-    elif [[ ! -z $(jq -r '.roles[] | select(.name == "'$2'" ) | "\(.name)"' $MESOS_LEADER_DIR"/5050-master_roles.json") ]]; then
+    elif [[ ! -z $(jq -r '.roles[] | select(.name == "'$2'" ) | "\(.name)"' $MESOS_LEADER_DIR/5050-master_roles.json) ]]; then
       ROLE_NAME=$2
       if [[ $# -eq 2 ]]; then
         # Print <role-id> summary
@@ -261,7 +244,7 @@ if [[ $1 == "role" ]]; then
 fi
 
 #####
-# Checks (TODO: Eventually make this way more readable... Single line check marks or X and color output.)
+# Checks
 #####
 if [[ $1 == "checks" ]]; then
   #########################
@@ -277,6 +260,7 @@ if [[ $1 == "checks" ]]; then
   else
     echo -e "\xE2\x9C\x94 All nodes on the same DC/OS version: $(echo $DCOS_VERSIONS | awk '{print$3}' | uniq)"
   fi
+
   #####
   # DC/OS component healthiness check (TODO: Add support for 3dt-health.json)
   #####
@@ -287,6 +271,7 @@ if [[ $1 == "checks" ]]; then
   else
     echo -e "\xE2\x9C\x94 All components report as healthy."
   fi
+
   #####
   # Unreachable agent check
   #####
@@ -297,8 +282,12 @@ if [[ $1 == "checks" ]]; then
   else
     echo -e "\xE2\x9C\x94 No agents listed as unreachable."
   fi
+
   #########################
   # Log Checks (tail logs from last service started message to rule out false positives, or otherwise, from the beginning)
+  # Ideas:
+  # - Port current checks from `bun` and implement from `issues`
+  # - Check iptables for DC/OS ports
   #########################
 fi
 
