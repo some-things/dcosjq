@@ -275,10 +275,10 @@ if [[ $1 == "checks" ]]; then
   #####
   # Unreachable agent check
   #####
-  UNREACHABLE_AGENTS="$(jq -r '"\(.unreachable.slaves[] | .id.value + " " + (.timestamp.nanoseconds|tostring))"' ${MESOS_LEADER_DIR}/5050-registrar_1__registry.json 2> /dev/null)"
+  UNREACHABLE_AGENTS="$(jq -r '"\(.unreachable.slaves[] | .id.value + " " + (.timestamp.nanoseconds / 1000000000 | gmtime | todate | tostring))"' ${MESOS_LEADER_DIR}/5050-registrar_1__registry.json 2> /dev/null)"
   if [[ ! -z $UNREACHABLE_AGENTS ]]; then
     echo -e "\xE2\x9D\x8C Unreachable agents found:"
-    echo -e "SLAVE_ID TIME_UNREACHABLE\n$UNREACHABLE_AGENTS" | column -t
+    echo -e "SLAVE_ID UNREACHABLE_SINCE\n$UNREACHABLE_AGENTS" | column -t
   else
     echo -e "\xE2\x9C\x94 No agents listed as unreachable."
   fi
@@ -289,6 +289,16 @@ if [[ $1 == "checks" ]]; then
   # - Port current checks from `bun` and implement from `issues`
   # - Check iptables for DC/OS ports
   #########################
+  #####
+  # Zookeeper fsync event check
+  #####
+  ZOOKEEPER_FSYNC_EVENTS="$(grep -i 'fsync-ing the write ahead log in' */dcos-exhibitor.service)"
+  if [[ ! -z $ZOOKEEPER_FSYNC_EVENTS ]]; then
+    echo -e "\xE2\x9D\x8C Zookeeper fsync events detected (See 'root cause' and 'recommendations' section within https://jira.mesosphere.com/browse/COPS-4403 if times are excessive):"
+    echo -e "$ZOOKEEPER_FSYNC_EVENTS"
+  else
+    echo -e "\xE2\x9C\x94 No Zookeeper fsync events detected."
+  fi
 fi
 
 #####
