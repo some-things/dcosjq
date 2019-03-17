@@ -299,6 +299,16 @@ if [[ $1 == "checks" ]]; then
   else
     echo -e "\xE2\x9C\x94 No Zookeeper fsync events detected."
   fi
+  #####
+  # Private registry certificate error check
+  #####
+  # Check with the team if we want to add */dcos-marathon.service here
+  REGISTRY_CERTIFICATE_ERRORS="$(grep -i "Container.*Failed to perform \'curl\': curl: (60) SSL certificate problem: self signed certificate" */dcos-mesos-slave.service 2> /dev/null | wc -l | awk '{print$1}')"
+  if [[ $REGISTRY_CERTIFICATE_ERRORS -gt 0 ]]; then
+    echo -e "\xE2\x9D\x8C Detected ${REGISTRY_CERTIFICATE_ERRORS} registry certificate errors. Please see https://jira.mesosphere.com/browse/COPS-2315 and https://jira.mesosphere.com/browse/COPS-2106 for more information."
+  else
+    echo -e "\xE2\x9C\x94 No private registry certificate errors found."
+  fi
 fi
 
 #####
