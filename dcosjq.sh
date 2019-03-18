@@ -262,7 +262,7 @@ if [[ $1 == "checks" ]]; then
   fi
 
   #####
-  # DC/OS component healthiness check (TODO: Add support for 3dt-health.json)
+  # DC/OS component healthiness check
   #####
   FAILED_UNITS="$((jq -r '"\(.node_role) \(.ip) \(.hostname) \(.units[] | select(.health != 0) | .id + " " + (.health | tostring))"' */dcos-diagnostics-health.json; jq -r '"\(.node_role) \(.ip) \(.hostname) \(.units[] | select(.health != 0) | .id + " " + (.health | tostring))"' */3dt-health.json) 2> /dev/null)"
   if [[ ! -z $FAILED_UNITS ]]; then
@@ -294,11 +294,12 @@ if [[ $1 == "checks" ]]; then
   #####
   ZOOKEEPER_FSYNC_EVENTS="$(grep -i 'fsync-ing the write ahead log in' */dcos-exhibitor.service)"
   if [[ ! -z $ZOOKEEPER_FSYNC_EVENTS ]]; then
-    echo -e "\xE2\x9D\x8C Zookeeper fsync events detected (See 'root cause' and 'recommendations' section within https://jira.mesosphere.com/browse/COPS-4403 if times are excessive):"
+    echo -e "\xE2\x9D\x8C Zookeeper fsync events detected (See \'root cause\' and \'recommendations\' section within https://jira.mesosphere.com/browse/COPS-4403 if times are excessive):"
     echo -e "$ZOOKEEPER_FSYNC_EVENTS"
   else
     echo -e "\xE2\x9C\x94 No Zookeeper fsync events detected."
   fi
+
   #####
   # Private registry certificate error check
   #####
