@@ -286,7 +286,7 @@ if [[ $1 == "checks" ]]; then
   #########################
   # Log Checks (tail logs from last service started message to rule out false positives, or otherwise, from the beginning)
   # Ideas:
-  # - Port current checks from `bun` and implement from `issues`
+  # - Port current checks from bun and implement from issues
   # - Check iptables for DC/OS ports
   #########################
   #####
@@ -294,7 +294,7 @@ if [[ $1 == "checks" ]]; then
   #####
   ZOOKEEPER_FSYNC_EVENTS="$(grep -i 'fsync-ing the write ahead log in' */dcos-exhibitor.service)"
   if [[ ! -z $ZOOKEEPER_FSYNC_EVENTS ]]; then
-    echo -e "\xE2\x9D\x8C Zookeeper fsync events detected (See \'root cause\' and \'recommendations\' section within https://jira.mesosphere.com/browse/COPS-4403 if times are excessive):"
+    echo -e "\xE2\x9D\x8C Zookeeper fsync events detected (See root cause and recommendations section within https://jira.mesosphere.com/browse/COPS-4403 if times are excessive):"
     echo -e "$ZOOKEEPER_FSYNC_EVENTS"
   else
     echo -e "\xE2\x9C\x94 No Zookeeper fsync events detected."
