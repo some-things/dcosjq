@@ -301,6 +301,26 @@ if [[ $1 == "checks" ]]; then
   fi
 
   #####
+  # Zookeeper all nodes available on startup check
+  #####
+  ZOOKEEPER_START_QUORUM_FAILURES="$(grep -i "Exception: Expected.*servers and.*leader, got.*servers and.*leaders" */dcos-exhibitor.service | wc -l)"
+  if [[ $ZOOKEEPER_START_QUORUM_FAILURES -gt 0 ]]; then
+    echo -e "\xE2\x9D\x8C Zookeeper failed to start ${ZOOKEEPER_START_QUORUM_FAILURES} times due to a missing node. Zookeeper requires that all masters are available before it will start."
+  else
+    echo -e "\xE2\x9C\x94 No Zookeeper start up failures due to a missing node."
+  fi
+
+  #####
+  # Zookeeper disk full error check
+  #####
+  ZOOKEEPER_DISK_FULL_ERRORS="$(grep -i "No space left on device" */dcos-exhibitor.service | wc -l)"
+  if [[ $ZOOKEEPER_DISK_FULL_ERRORS -gt 0 ]]; then
+    echo -e "\xE2\x9D\x8C Zookeeper logs indicate that the disk is full and has thrown an error ${ZOOKEEPER_DISK_FULL_ERRORS} times. Please check that there is sufficient free space on the disk."
+  else
+    echo -e "\xE2\x9C\x94 No Zookeeper disk full errors detected."
+  fi
+
+  #####
   # Private registry certificate error check
   #####
   # Check with the team if we want to add */dcos-marathon.service here
