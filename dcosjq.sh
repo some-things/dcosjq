@@ -262,6 +262,14 @@ fi
 #####
 if [[ $1 == "checks" ]]; then
   #########################
+  # General cluster information
+  #########################
+  echo "************************************"
+  echo "****** DC/OS CLUSTER SUMMARY: ******"
+  jq -r '"\("* Cluster Name: " + .cluster_name + "\n* DCOS Version: " + .dcos_version + "\n* DCOS Security Mode: " + .security + "\n* Platform: " + .platform + "\n* Provider: " + .provider + "\n* Docker GC Enabled: " + .enable_docker_gc + "\n* Mesos GC Delay: " + .gc_delay + "\n* Proxy: " + .use_proxy + "\n* DNS Search Domains: " + .dns_search + "\n* GPU Support: " + .enable_gpu_isolation + "\n* GPUs Scarce: " + .gpus_are_scarce + "\n* Exhibitor Backend: " + .exhibitor_storage_backend + "\n* Number of Masters: " + .num_masters + "\n* Master Discovery: " + .master_discovery + "\n* Master List: " + .master_list + "\n* Resolvers: " + .resolvers)"' ${MESOS_LEADER_DIR}/opt/mesosphere/etc/expanded.config.json
+  echo "************************************"
+
+  #########################
   # State Checks
   #########################
   #####
@@ -339,7 +347,7 @@ if [[ $1 == "checks" ]]; then
   #####
   COCKROACHDB_TIME_SYNC_EVENTS="$(grep -i "fewer than half the known nodes are within the maximum offset" */dcos-cockroach.service 2> /dev/null | awk 'BEGIN {FS="/"}; {print$1}' | sort -k 2 | uniq -c)"
   if [[ ! -z $COCKROACHDB_TIME_SYNC_EVENTS ]]; then
-    echo -e "\xE2\x9D\x8C CockroachDB logs indicate that there is/was an issue with time sync. Please ensure that time is in sync and CockroachDB is helthy on all Masters."
+    echo -e "\xE2\x9D\x8C CockroachDB logs indicate that there is/was an issue with time sync. Please ensure that time is in sync and CockroachDB is healthy on all Masters."
     echo -e "EVENTS NODE\n$COCKROACHDB_TIME_SYNC_EVENTS" | column -t | sed 's/^/     /g'
   else
     echo -e "\xE2\x9C\x94 No CockroachDB time sync events."
