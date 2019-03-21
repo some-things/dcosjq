@@ -38,14 +38,28 @@ if [[ $1 == "extract" ]]; then
 fi
 
 #####
-# JQ/bundle pre-flight checks
+# JQ pre-flight checks
 #####
 # Check for jq
 if [[ -z $(which jq) ]]; then
   echo "ERROR: 'jq' not found. Please install jq and add it to your PATH to continue."
   exit
+fi
+
+#####
+# Beautify
+#####
+if [[ $1 == "beautify" ]]; then
+  for i in $(find . -type f -name '*.json'); do
+    cat <<< "$(jq '.' < $i)" > $i
+  done
+fi
+
+#####
+# Bundle pre-flight checks
+#####
 # Check that current dir is a bundle dir
-elif [[ $(pwd) != *"bundle"* ]]; then
+if [[ $(pwd) != *"bundle"* ]]; then
   echo "ERROR: The working directory, $(pwd), doesn't seem to be a bundle directory. Please verify the working directory name contains 'bundle'."
   exit
 # Ensure at least one master folder exists
@@ -330,13 +344,26 @@ if [[ $1 == "checks" ]]; then
   else
     echo -e "\xE2\x9C\x94 No private registry certificate errors found."
   fi
-fi
 
-#####
-# Beautify
-#####
-if [[ $1 == "beautify" ]]; then
-  for i in $(find . -type f -name '*.json'); do
-    cat <<< "$(jq '.' < $i)" > $i
-  done
+  #####
+  # KMEM event check
+  #####
+  KMEM_EVENTS_PER_NODE="$(grep -Ri 'SLUB: Unable to allocate memory on node -1' */dmesg_-T-0.output | awk 'BEGIN {FS="/"}; {print$1}' | sort -k 2 | uniq -c)"
+  if [[ ! -z $KMEM_EVENTS_PER_NODE ]]; then
+    echo -e "\xE2\x9D\x8C Detected kmem events (please see advisories: https://support.mesosphere.com/s/article/Critical-Issue-KMEM-MSPH-2018-0006 and https://support.mesosphere.com/s/article/Known-Issue-KMEM-with-Kubernetes-MSPH-2019-0002) on the following nodes:"
+    echo -e "EVENTS NODE\n$KMEM_EVENTS_PER_NODE" | column -t
+  else
+    echo -e "\xE2\x9C\x94 No KMEM related events found."
+  fi
+
+  #####
+  # OOM event check
+  #####
+  OOM_EVENTS_PER_NODE="$(grep -Ri 'invoked oom-killer' */dmesg_-T-0.output | awk 'BEGIN {FS="/"}; {print$1}' | sort | uniq -c)"
+  if [[ ! -z $OOM_EVENTS_PER_NODE ]]; then
+    echo -e "\xE2\x9D\x8C Detected out of memory events on the following nodes:"
+    echo -e "EVENTS NODE\n$OOM_EVENTS_PER_NODE" | column -t
+  else
+    echo -e "\xE2\x9C\x94 No out of memory events found."
+  fi
 fi
