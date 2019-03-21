@@ -270,7 +270,7 @@ if [[ $1 == "checks" ]]; then
   DCOS_VERSIONS="$((jq -r '"\(.node_role) \(.ip) \(.dcos_version)"' */dcos-diagnostics-health.json | sort -k 3; jq -r '"\(.node_role) \(.ip) \(.dcos_version)"' */3dt-health.json | sort -k 3) 2> /dev/null)"
   if [[ $(echo "$DCOS_VERSIONS" | awk '{print$3}' | uniq | wc -l) -gt 1 ]]; then
     echo -e "\xE2\x9D\x8C Multiple DC/OS versions detected:"
-    echo -e "NODE_TYPE IP DCOS_VERSION\n$DCOS_VERSIONS" | column -t
+    echo -e "NODE_TYPE IP DCOS_VERSION\n$DCOS_VERSIONS" | column -t | sed 's/^/     /g'
   else
     echo -e "\xE2\x9C\x94 All nodes on the same DC/OS version: $(echo $DCOS_VERSIONS | awk '{print$3}' | uniq)"
   fi
@@ -281,7 +281,7 @@ if [[ $1 == "checks" ]]; then
   FAILED_UNITS="$((jq -r '"\(.node_role) \(.ip) \(.hostname) \(.units[] | select(.health != 0) | .id + " " + (.health | tostring))"' */dcos-diagnostics-health.json; jq -r '"\(.node_role) \(.ip) \(.hostname) \(.units[] | select(.health != 0) | .id + " " + (.health | tostring))"' */3dt-health.json) 2> /dev/null)"
   if [[ ! -z $FAILED_UNITS ]]; then
     echo -e "\xE2\x9D\x8C Failed DC/OS components found:"
-    echo -e "NODE_TYPE IP HOSTNAME SERVICE STATUS\n$FAILED_UNITS" | column -t
+    echo -e "NODE_TYPE IP HOSTNAME SERVICE STATUS\n$FAILED_UNITS" | column -t | sed 's/^/     /g'
   else
     echo -e "\xE2\x9C\x94 All components report as healthy."
   fi
@@ -292,7 +292,7 @@ if [[ $1 == "checks" ]]; then
   UNREACHABLE_AGENTS="$(jq -r '"\(.unreachable.slaves[] | .id.value + " " + (.timestamp.nanoseconds / 1000000000 | gmtime | todate | tostring))"' ${MESOS_LEADER_DIR}/5050-registrar_1__registry.json 2> /dev/null)"
   if [[ ! -z $UNREACHABLE_AGENTS ]]; then
     echo -e "\xE2\x9D\x8C Unreachable agents found:"
-    echo -e "SLAVE_ID UNREACHABLE_SINCE\n$UNREACHABLE_AGENTS" | column -t
+    echo -e "SLAVE_ID UNREACHABLE_SINCE\n$UNREACHABLE_AGENTS" | column -t | sed 's/^/     /g'
   else
     echo -e "\xE2\x9C\x94 No agents listed as unreachable."
   fi
@@ -306,18 +306,18 @@ if [[ $1 == "checks" ]]; then
   #####
   # Zookeeper fsync event check
   #####
-  ZOOKEEPER_FSYNC_EVENTS="$(grep -i 'fsync-ing the write ahead log in' */dcos-exhibitor.service)"
+  ZOOKEEPER_FSYNC_EVENTS="$(grep -i 'fsync-ing the write ahead log in' */dcos-exhibitor.service 2> /dev/null)"
   if [[ ! -z $ZOOKEEPER_FSYNC_EVENTS ]]; then
     echo -e "\xE2\x9D\x8C Zookeeper fsync events detected (See root cause and recommendations section within https://jira.mesosphere.com/browse/COPS-4403 if times are excessive):"
-    echo -e "$ZOOKEEPER_FSYNC_EVENTS"
+    echo -e "$ZOOKEEPER_FSYNC_EVENTS" | sed 's/^/     /g'
   else
-    echo -e "\xE2\x9C\x94 No Zookeeper fsync events detected."
+    echo -e "\xE2\x9C\x94 No Zookeeper fsync events."
   fi
 
   #####
   # Zookeeper all nodes available on startup check
   #####
-  ZOOKEEPER_START_QUORUM_FAILURES="$(grep -i "Exception: Expected.*servers and.*leader, got.*servers and.*leaders" */dcos-exhibitor.service | wc -l)"
+  ZOOKEEPER_START_QUORUM_FAILURES="$(grep -i "Exception: Expected.*servers and.*leader, got.*servers and.*leaders" */dcos-exhibitor.service 2> /dev/null | wc -l)"
   if [[ $ZOOKEEPER_START_QUORUM_FAILURES -gt 0 ]]; then
     echo -e "\xE2\x9D\x8C Zookeeper failed to start ${ZOOKEEPER_START_QUORUM_FAILURES} times due to a missing node. Zookeeper requires that all masters are available before it will start."
   else
@@ -327,11 +327,22 @@ if [[ $1 == "checks" ]]; then
   #####
   # Zookeeper disk full error check
   #####
-  ZOOKEEPER_DISK_FULL_ERRORS="$(grep -i "No space left on device" */dcos-exhibitor.service | wc -l)"
+  ZOOKEEPER_DISK_FULL_ERRORS="$(grep -i "No space left on device" */dcos-exhibitor.service 2> /dev/null | wc -l)"
   if [[ $ZOOKEEPER_DISK_FULL_ERRORS -gt 0 ]]; then
     echo -e "\xE2\x9D\x8C Zookeeper logs indicate that the disk is full and has thrown an error ${ZOOKEEPER_DISK_FULL_ERRORS} times. Please check that there is sufficient free space on the disk."
   else
-    echo -e "\xE2\x9C\x94 No Zookeeper disk full errors detected."
+    echo -e "\xE2\x9C\x94 No Zookeeper disk full errors."
+  fi
+
+  #####
+  # CockroachDB time sync check
+  #####
+  COCKROACHDB_TIME_SYNC_EVENTS="$(grep -i "fewer than half the known nodes are within the maximum offset" */dcos-cockroach.service 2> /dev/null | awk 'BEGIN {FS="/"}; {print$1}' | sort -k 2 | uniq -c)"
+  if [[ ! -z $COCKROACHDB_TIME_SYNC_EVENTS ]]; then
+    echo -e "\xE2\x9D\x8C CockroachDB logs indicate that there is/was an issue with time sync. Please ensure that time is in sync and CockroachDB is helthy on all Masters."
+    echo -e "EVENTS NODE\n$COCKROACHDB_TIME_SYNC_EVENTS" | column -t | sed 's/^/     /g'
+  else
+    echo -e "\xE2\x9C\x94 No CockroachDB time sync events."
   fi
 
   #####
@@ -348,10 +359,10 @@ if [[ $1 == "checks" ]]; then
   #####
   # KMEM event check
   #####
-  KMEM_EVENTS_PER_NODE="$(grep -Ri 'SLUB: Unable to allocate memory on node -1' */dmesg_-T-0.output | awk 'BEGIN {FS="/"}; {print$1}' | sort -k 2 | uniq -c)"
+  KMEM_EVENTS_PER_NODE="$(grep -Ri 'SLUB: Unable to allocate memory on node -1' */dmesg_-T-0.output 2> /dev/null | awk 'BEGIN {FS="/"}; {print$1}' | sort -k 2 | uniq -c)"
   if [[ ! -z $KMEM_EVENTS_PER_NODE ]]; then
     echo -e "\xE2\x9D\x8C Detected kmem events (please see advisories: https://support.mesosphere.com/s/article/Critical-Issue-KMEM-MSPH-2018-0006 and https://support.mesosphere.com/s/article/Known-Issue-KMEM-with-Kubernetes-MSPH-2019-0002) on the following nodes:"
-    echo -e "EVENTS NODE\n$KMEM_EVENTS_PER_NODE" | column -t
+    echo -e "EVENTS NODE\n$KMEM_EVENTS_PER_NODE" | column -t | sed 's/^/     /g'
   else
     echo -e "\xE2\x9C\x94 No KMEM related events found."
   fi
@@ -359,10 +370,10 @@ if [[ $1 == "checks" ]]; then
   #####
   # OOM event check
   #####
-  OOM_EVENTS_PER_NODE="$(grep -Ri 'invoked oom-killer' */dmesg_-T-0.output | awk 'BEGIN {FS="/"}; {print$1}' | sort | uniq -c)"
+  OOM_EVENTS_PER_NODE="$(grep -Ri 'invoked oom-killer' */dmesg_-T-0.output 2> /dev/null | awk 'BEGIN {FS="/"}; {print$1}' | sort | uniq -c)"
   if [[ ! -z $OOM_EVENTS_PER_NODE ]]; then
     echo -e "\xE2\x9D\x8C Detected out of memory events on the following nodes:"
-    echo -e "EVENTS NODE\n$OOM_EVENTS_PER_NODE" | column -t
+    echo -e "EVENTS NODE\n$OOM_EVENTS_PER_NODE" | column -t | sed 's/^/     /g'
   else
     echo -e "\xE2\x9C\x94 No out of memory events found."
   fi
