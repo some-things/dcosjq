@@ -96,7 +96,7 @@ done
 #####
 # Master
 #####
-if [[ $1 == "master" ]]; then
+if [[ $1 == "leader" ]]; then
   if [[ $# -eq 1 ]]; then
     # Print Mesos leader 'hostname' (IP)
     echo $MESOS_LEADER_HOSTNAME
@@ -314,7 +314,7 @@ if [[ $1 == "checks" ]]; then
   #####
   # Zookeeper fsync event check
   #####
-  ZOOKEEPER_FSYNC_EVENTS="$(grep -i 'fsync-ing the write ahead log in' */dcos-exhibitor.service 2> /dev/null)"
+  ZOOKEEPER_FSYNC_EVENTS="$(grep -i 'fsync-ing the write ahead log in' */dcos-exhibitor.service* 2> /dev/null)"
   if [[ ! -z $ZOOKEEPER_FSYNC_EVENTS ]]; then
     echo -e "\xE2\x9D\x8C Zookeeper fsync events detected (See root cause and recommendations section within https://jira.mesosphere.com/browse/COPS-4403 if times are excessive):"
     echo -e "$ZOOKEEPER_FSYNC_EVENTS" | sed 's/^/     /g'
@@ -325,7 +325,7 @@ if [[ $1 == "checks" ]]; then
   #####
   # Zookeeper all nodes available on startup check
   #####
-  ZOOKEEPER_START_QUORUM_FAILURES="$(grep -i "Exception: Expected.*servers and.*leader, got.*servers and.*leaders" */dcos-exhibitor.service 2> /dev/null | wc -l)"
+  ZOOKEEPER_START_QUORUM_FAILURES="$(grep -i "Exception: Expected.*servers and.*leader, got.*servers and.*leaders" */dcos-exhibitor.service* 2> /dev/null | wc -l)"
   if [[ $ZOOKEEPER_START_QUORUM_FAILURES -gt 0 ]]; then
     echo -e "\xE2\x9D\x8C Zookeeper failed to start ${ZOOKEEPER_START_QUORUM_FAILURES} times due to a missing node. Zookeeper requires that all masters are available before it will start."
   else
@@ -335,7 +335,7 @@ if [[ $1 == "checks" ]]; then
   #####
   # Zookeeper disk full error check
   #####
-  ZOOKEEPER_DISK_FULL_ERRORS="$(grep -i "No space left on device" */dcos-exhibitor.service 2> /dev/null | wc -l)"
+  ZOOKEEPER_DISK_FULL_ERRORS="$(grep -i "No space left on device" */dcos-exhibitor.service* 2> /dev/null | wc -l)"
   if [[ $ZOOKEEPER_DISK_FULL_ERRORS -gt 0 ]]; then
     echo -e "\xE2\x9D\x8C Zookeeper logs indicate that the disk is full and has thrown an error ${ZOOKEEPER_DISK_FULL_ERRORS} times. Please check that there is sufficient free space on the disk."
   else
@@ -345,7 +345,7 @@ if [[ $1 == "checks" ]]; then
   #####
   # CockroachDB time sync check
   #####
-  COCKROACHDB_TIME_SYNC_EVENTS="$(grep -i "fewer than half the known nodes are within the maximum offset" */dcos-cockroach.service 2> /dev/null | awk 'BEGIN {FS="/"}; {print$1}' | sort -k 2 | uniq -c)"
+  COCKROACHDB_TIME_SYNC_EVENTS="$(grep -i "fewer than half the known nodes are within the maximum offset" */dcos-cockroach.service* 2> /dev/null | awk 'BEGIN {FS="/"}; {print$1}' | sort -k 2 | uniq -c)"
   if [[ ! -z $COCKROACHDB_TIME_SYNC_EVENTS ]]; then
     echo -e "\xE2\x9D\x8C CockroachDB logs indicate that there is/was an issue with time sync. Please ensure that time is in sync and CockroachDB is healthy on all Masters."
     echo -e "EVENTS NODE\n$COCKROACHDB_TIME_SYNC_EVENTS" | column -t | sed 's/^/     /g'
@@ -357,7 +357,7 @@ if [[ $1 == "checks" ]]; then
   # Private registry certificate error check
   #####
   # Check with the team if we want to add */dcos-marathon.service here
-  REGISTRY_CERTIFICATE_ERRORS="$(grep -i "Container.*Failed to perform \'curl\': curl: (60) SSL certificate problem: self signed certificate" */dcos-mesos-slave.service 2> /dev/null | wc -l | awk '{print$1}')"
+  REGISTRY_CERTIFICATE_ERRORS="$(grep -i "Container.*Failed to perform \'curl\': curl: (60) SSL certificate problem: self signed certificate" */dcos-mesos-slave.service* 2> /dev/null | wc -l | awk '{print$1}')"
   if [[ $REGISTRY_CERTIFICATE_ERRORS -gt 0 ]]; then
     echo -e "\xE2\x9D\x8C Detected ${REGISTRY_CERTIFICATE_ERRORS} registry certificate errors. Please see https://jira.mesosphere.com/browse/COPS-2315 and https://jira.mesosphere.com/browse/COPS-2106 for more information."
   else
