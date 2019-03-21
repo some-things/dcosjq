@@ -367,7 +367,7 @@ if [[ $1 == "checks" ]]; then
   #####
   # KMEM event check
   #####
-  KMEM_EVENTS_PER_NODE="$(grep -Ri 'SLUB: Unable to allocate memory on node -1' */dmesg_-T-0.output 2> /dev/null | awk 'BEGIN {FS="/"}; {print$1}' | sort -k 2 | uniq -c)"
+  KMEM_EVENTS_PER_NODE="$(grep -Ri 'SLUB: Unable to allocate memory on node -1' */dmesg* 2> /dev/null | awk 'BEGIN {FS="/"}; {print$1}' | sort -k 2 | uniq -c)"
   if [[ ! -z $KMEM_EVENTS_PER_NODE ]]; then
     echo -e "\xE2\x9D\x8C Detected kmem events (please see advisories: https://support.mesosphere.com/s/article/Critical-Issue-KMEM-MSPH-2018-0006 and https://support.mesosphere.com/s/article/Known-Issue-KMEM-with-Kubernetes-MSPH-2019-0002) on the following nodes:"
     echo -e "EVENTS NODE\n$KMEM_EVENTS_PER_NODE" | column -t | sed 's/^/     /g'
@@ -378,7 +378,7 @@ if [[ $1 == "checks" ]]; then
   #####
   # OOM event check
   #####
-  OOM_EVENTS_PER_NODE="$(grep -Ri 'invoked oom-killer' */dmesg_-T-0.output 2> /dev/null | awk 'BEGIN {FS="/"}; {print$1}' | sort | uniq -c)"
+  OOM_EVENTS_PER_NODE="$(grep -Ri 'invoked oom-killer' */dmesg* 2> /dev/null | awk 'BEGIN {FS="/"}; {print$1}' | sort | uniq -c)"
   if [[ ! -z $OOM_EVENTS_PER_NODE ]]; then
     echo -e "\xE2\x9D\x8C Detected out of memory events on the following nodes:"
     echo -e "EVENTS NODE\n$OOM_EVENTS_PER_NODE" | column -t | sed 's/^/     /g'
