@@ -9,33 +9,8 @@
 # offers(?)
 # unreachable
 # Add fix so that this can be run from any dir within a bundle (Make sure to remove the associated section from 'pre-flight checks' when implementing this...)
+# Rewrite things so we don't need to have exits for stuff ran before the master dir checks...
 #########################
-
-#####
-# Extract
-#####
-
-# Set the full path to where you would like to have bundle and ticket files and folders created.
-BASE_DIR="${HOME}/Documents/logs/tickets"
-
-# BASE_DIR must be set to a valid path for any 'extract' commands to function properly
-if [[ $1 == "extract" ]]; then
-  if [[ ! -z $2 ]]; then
-    read -p "Ticket number: " TICKET_NUM
-    TICKET_DIR="${BASE_DIR}/${TICKET_NUM}"
-    mkdir -p "${TICKET_DIR}"
-    BUNDLE_DIR="${BASE_DIR}/${TICKET_NUM}/${2%%.zip}"
-    unzip -q -d "${BUNDLE_DIR}" "${2}"
-    gunzip -q -r "${BUNDLE_DIR}"
-    # Move the compressed log bundle to the 'storage' directory; Comment the next 2 lines out to not move the original file.
-    mkdir -p "${TICKET_DIR}/storage"
-    mv $2 "${TICKET_DIR}/storage/${2}"
-    echo "Finished extracting bundle to '${BUNDLE_DIR}'."
-  else
-    echo "Please specify a compressed DC/OS diagnostic bundle file to extract."
-  fi
-  exit
-fi
 
 #####
 # JQ pre-flight checks
@@ -47,12 +22,56 @@ if [[ -z $(which jq) ]]; then
 fi
 
 #####
-# Beautify
+# Format all JSON files within the work dir and sub dirs to be more human readable
 #####
-if [[ $1 == "beautify" ]]; then
-  for i in $(find . -type f -name '*.json'); do
-    cat <<< "$(jq '.' < $i)" > $i
-  done
+formatJSON () {
+  if [[ ! -z $JSON_FILES ]]; then
+    echo "Formatting JSON..."
+    for i in $(find . -type f -name '*.json'); do
+      cat <<< "$(jq '.' < $i 2> /dev/null)" > $i
+    done
+    echo "Formatting complete."
+  else
+    echo "Error: No JSON files found within this directory and its subdirectories."
+  fi
+}
+
+case $1 in
+  "format" )
+    JSON_FILES="$(find . -type f -name '*.json')"
+    formatJSON
+    exit
+    ;;
+esac
+
+#####
+# Extract
+#####
+# Set the full path to where you would like to have bundle and ticket files and folders created.
+BASE_DIR="${HOME}/Documents/logs/tickets"
+
+# BASE_DIR must be set to a valid path for any 'extract' commands to function properly
+if [[ $1 == "extract" ]]; then
+  if [[ ! -z $2 ]]; then
+    read -p "Ticket number: " TICKET_NUM
+    TICKET_DIR="${BASE_DIR}/${TICKET_NUM}"
+    mkdir -p "${TICKET_DIR}"
+    BUNDLE_DIR="${BASE_DIR}/${TICKET_NUM}/${2%%.zip}"
+    echo "Extracting bundle to ${BUNDLE_DIR}..."
+    unzip -q -d "${BUNDLE_DIR}" "${2}"
+    echo "Gunzip-ing all bundle files..."
+    gunzip -q -r "${BUNDLE_DIR}"
+    JSON_FILES="$(find ${BUNDLE_DIR} -type f -name '*.json')"
+    formatJSON
+    # Move the compressed log bundle to the 'storage' directory; Comment the next 2 lines out to not move the original file.
+    mkdir -p "${TICKET_DIR}/storage"
+    echo "Moving original bundle file to ${TICKET_DIR}/storage/${2}"
+    mv $2 "${TICKET_DIR}/storage/${2}"
+    echo "Finished extracting bundle to ${BUNDLE_DIR}"
+  else
+    echo "Please specify a compressed DC/OS diagnostic bundle file to extract."
+  fi
+  exit
 fi
 
 #####
