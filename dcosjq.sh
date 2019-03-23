@@ -113,14 +113,14 @@ for i in $(find ./*master* -type f -name 5050-registrar_1__registry.json); do
 done
 
 #####
-# Master
+# Mesos Leader
 #####
-if [[ $1 == "leader" ]]; then
-  if [[ $# -eq 1 ]]; then
-    # Print Mesos leader 'hostname' (IP)
-    echo $MESOS_LEADER_HOSTNAME
-  fi
-fi
+case $1 in
+  # Print Mesos leader 'hostname' (IP)
+  "leader" )
+    echo "Mesos Leader: ${MESOS_LEADER_HOSTNAME}"
+    ;;
+esac
 
 #####
 # Cluster
