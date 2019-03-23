@@ -10,6 +10,20 @@
 # unreachable
 # Add fix so that this can be run from any dir within a bundle (Make sure to remove the associated section from 'pre-flight checks' when implementing this...)
 # Rewrite things so we don't need to have exits for stuff ran before the master dir checks...
+# Add var for MESOS_MASTER_STATE
+#########################
+# SNIPPETS TO IMPLEMENT:
+# jq -r '.leader_info.hostname' */5050-master_state.json
+# jq -r '.activated_slaves' */5050-master_state.json
+# jq -r '.deactivated_slaves' */5050-master_state.json
+# jq -r '.unreachable_slaves' */5050-master_state.json
+# .cluster
+# .flags
+# .version
+# .slaves[]
+# .frameworks[]
+# jq -r '.frameworks[].tasks[].role' 5050-master_state.json | uniq <-- doesn't show * :/
+
 #########################
 
 #####
@@ -151,12 +165,38 @@ printFrameworkIDSummary () {
 }
 
 printFrameworkIDAgents () {
-  echo -e "ID\n $(jq -r '.frameworks[] | select(.id == "'$FRAMEWORK_ID'") | .slave_ids[]' $MESOS_STATE_SUMMARY)" | column -t
+  echo -e "ID\n$(jq -r '.frameworks[] | select(.id == "'$FRAMEWORK_ID'") | .slave_ids[]' $MESOS_STATE_SUMMARY)" | column -t
+}
+
+printFrameworkIDRoles () {
+  echo -e "ROLE_NAME\n$(jq -r '.frameworks[] | select(.id == "'${FRAMEWORK_ID}'") | .tasks[].role' "${MESOS_MASTER_STATE}" | sort -u)"
 }
 
 printFrameworkIDTasks () {
   echo -e "ID NAME ROLE SLAVE_ID STATE\n $(jq -r '.frameworks[] | select(.id == "'$FRAMEWORK_ID'") | .tasks[] | "\(.id) \(.name) \(.role) \(.slave_id) \(.state)"' $MESOS_LEADER_DIR/5050-master_frameworks.json | sort)" | column -t
 }
+
+printFrameworkCommandUsage () {
+  echo -e "DCOSJQ Framework Usage:"
+  (echo -e "framework list - Prints framework id and name of each framework"
+  echo -e "framework <framework-id> - Prints a summary of the specified framework"
+  echo -e "framework <framework-id> agents - Prints the slave-ids associated with the framework"
+  echo -e "framework <framework-id> tasks - Prints the id, name, role, slave id, and state of each task associated with the framework") | sed 's/^/     /g'
+}
+
+# WIP
+# case "${1,,}" in
+#   "framework" )
+#     case "${2,,}" in
+#       "--help" )
+#         printFrameworkCommandUsage
+#         ;;
+#       * )
+#         echo -e "ERROR: Invalid subcommand or framework id. Please see 'dcosjq framework --help' for usage."
+#         ;;
+#     esac
+#     ;;
+# esac
 
 if [[ $1 == "framework" ]]; then
   if [[ $# -eq 1 ]]; then
@@ -181,7 +221,7 @@ if [[ $1 == "framework" ]]; then
     else
       # Subcommand/framework-id not found
       echo "ERROR: '$2' is not a valid command or framework-id. Please try again."
-      echo "Print framework usage here, etc."
+      printFrameworkCommandUsage
     fi
   fi
 fi
@@ -250,6 +290,13 @@ printRoleAgents () {
   jq '.frameworks[].tasks[] | select(.role == "'$ROLE_NAME'") | .slave_id' $MESOS_LEADER_DIR/5050-master_frameworks.json | sort -u
 }
 
+printRoleCommandUsage () {
+  echo -e "DCOSJQ Role Usage:"
+  (echo -e "role list - Prints the name of each role"
+  echo -e "role <role-name> - Prints a summary of the specified role"
+  echo -e "role <role-name> agents - Prints the agents assoiceted with the specified role") | sed 's/^/     /g'
+}
+
 if [[ $1 == "role" ]]; then
   if [[ $# -eq 1 ]]; then
     # Print usage
@@ -270,7 +317,7 @@ if [[ $1 == "role" ]]; then
     else
       # Subcommand/framework-id not found
       echo "ERROR: '$2' is not a valid command or role. Please try again."
-      echo "Print role usage here, etc."
+      printRoleCommandUsage
     fi
   fi
 fi
