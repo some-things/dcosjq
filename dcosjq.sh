@@ -36,7 +36,7 @@ formatJSON () {
   fi
 }
 
-case $1 in
+case "${1,,}" in
   "format" )
     JSON_FILES="$(find . -type f -name '*.json')"
     formatJSON
@@ -115,7 +115,7 @@ done
 #####
 # Mesos Leader
 #####
-case $1 in
+case "${1,,}" in
   # Print Mesos leader 'hostname' (IP)
   "leader" )
     echo "Mesos Leader: ${MESOS_LEADER_HOSTNAME}"
@@ -129,16 +129,15 @@ printClusterResources () {
   echo -e "AGENT_ID IP RESOURCE TOTAL UNRESERVED RESERVED USED\n$(jq -r '"\(.slaves[] | (.id) + " " + (.hostname) + " CPU "+ (.resources.cpus | tostring) + " " + (.unreserved_resources.cpus | tostring) + " " + (.resources.cpus - .unreserved_resources.cpus | tostring) + " " + (.used_resources.cpus | tostring) + "\n - - MEM "+ (.resources.mem | tostring) + " " + (.unreserved_resources.mem | tostring) + " " + (.resources.mem - .unreserved_resources.mem | tostring) + " " + (.used_resources.mem | tostring) + "\n - - DISK "+ (.resources.disk | tostring) + " " + (.unreserved_resources.disk | tostring) + " " + (.resources.disk - .unreserved_resources.disk | tostring) + " " + (.used_resources.disk | tostring) + "\n - - GPU "+ (.resources.gpus | tostring) + " " + (.unreserved_resources.gpus | tostring) + " " + (.resources.gpus - .unreserved_resources.gpus | tostring) + " " + (.used_resources.gpus | tostring))"' ${MESOS_LEADER_DIR}/5050-master_state.json)" | column -t
 }
 
-if [[ $1 == "cluster" ]]; then
-  if [[ $# -eq 1 ]]; then
-    # If naked, print usage
-    echo "Print cluster usage here, etc."
-  elif [[ $# -gt 1 ]]; then
-    if [[ $2 == "resources" ]]; then
-      printClusterResources
-    fi
-  fi
-fi
+case "${1,,}" in
+  "cluster" )
+    case "${2,,}" in
+      "resources" )
+        printClusterResources
+        ;;
+    esac
+    ;;
+esac
 
 #####
 # Framework
@@ -279,7 +278,7 @@ fi
 #####
 # Checks
 #####
-if [[ $1 == "checks" ]]; then
+checkErrors () {
   #########################
   # General cluster information
   #########################
@@ -404,4 +403,10 @@ if [[ $1 == "checks" ]]; then
   else
     echo -e "\xE2\x9C\x94 No out of memory events found."
   fi
-fi
+}
+
+case "${1,,}" in
+  "checks" )
+    checkErrors
+    ;;
+esac
