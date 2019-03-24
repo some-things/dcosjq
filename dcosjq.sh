@@ -204,26 +204,39 @@ case "${1,,}" in
     case "${2,,}" in
       "" )
         # Framework command usage
-        printFrameworkCommandUsage ;;
+        printFrameworkCommandUsage
+        ;;
       "list" )
         # Framework list
-        printFrameworkList ;;
+        printFrameworkList
+        ;;
       "$(jq -r '"\(.frameworks[] | select(.id == "'$2'") | .id)"' "${MESOS_MASTER_STATE}")" )
         FRAMEWORK_ID=$2
         case "${3,,}" in
           "agents" )
-            printFrameworkIDAgents ;;
+            # Framework <id> agents
+            printFrameworkIDAgents
+            ;;
           "tasks" )
-            printFrameworkIDTasks ;;
+            # Framework <id> tasks
+            printFrameworkIDTasks
+            ;;
           "roles" )
-            printFrameworkIDRoles ;;
+            # Framework <id> roles
+            printFrameworkIDRoles
+            ;;
           * )
-            printFrameworkIDSummary ;;
-        esac ;;
+            # Framework <id> summary
+            printFrameworkIDSummary
+            ;;
+        esac
+        ;;
       * )
         # Framework command usage
-        printFrameworkCommandUsage ;;
-    esac ;;
+        printFrameworkCommandUsage
+        ;;
+    esac
+    ;;
 esac
 
 #####
