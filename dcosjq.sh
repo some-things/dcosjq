@@ -5,6 +5,8 @@
 #
 # Rewrite and add functions as needed for if a bundle is complete or if we are only limited to certain state files.
 #
+# It likely makes sense to add a flag to show the transitions of each task... we should also look into failed/lost/etc. tasks
+#
 #####
 
 ########################
@@ -168,6 +170,7 @@ esac
 #     - Fix framework <id> agents function
 #####
 printFrameworkList () {
+  # echo "RUNNING COMMAND: echo -e \"ID NAME\n\$(jq -r '.frameworks[] | \"\(.id + \" \" + .name)\"' "${MESOS_MASTER_STATE}" | sort -k 2)\" | column -t"
   echo -e "ID NAME\n$(jq -r '.frameworks[] | "\(.id + " " + .name)"' "${MESOS_MASTER_STATE}" | sort -k 2)" | column -t
 }
 
@@ -182,7 +185,7 @@ printFrameworkIDAgents () {
 }
 
 printFrameworkIDTasks () {
-  echo -e "ID NAME CURRENT_STATE STATES TIMESTAMP\n$(jq -r '"\(.frameworks[].tasks[] | select(.framework_id == "'$FRAMEWORK_ID'") | (.id) + " " +  (.name) + " " + (.state) + " " + (.statuses[] | (.state) + " " + (.timestamp | todate)))"' "${MESOS_MASTER_STATE}" | sort -k 1)" | column -t
+  echo -e "ID NAME CURRENT_STATE STATES TIMESTAMP SLAVE_ID\n$(jq -r '"\(.frameworks[].tasks[] | select(.framework_id == "'$FRAMEWORK_ID'") | (.id) + " " +  (.name) + " " + (.state) + " " + (.statuses[] | (.state) + " " + (.timestamp | todate)) + " " + (.slave_id))"' "${MESOS_MASTER_STATE}" | sort -k 1)" | column -t
 }
 
 printFrameworkIDRoles () {
@@ -259,6 +262,7 @@ printAgentFrameworks () {
   echo -e "ID NAME\n$(jq -r '.frameworks[] | {id: .id, name: .name, slave_id: .tasks[].slave_id} | select(.slave_id == "'$AGENT_ID'") | "\((.id) + " " + (.name))"' "${MESOS_MASTER_STATE}" | sort -u -k 2)" | column -t
 }
 
+# It might make sense to add framework ids in here
 printAgentTasks () {
   echo -e "ID NAME CURRENT_STATE STATES TIMESTAMP\n$(jq -r '"\(.frameworks[].tasks[] | select(.slave_id == "'$AGENT_ID'") | (.id) + " " +  (.name) + " " + (.state) + " " + (.statuses[] | (.state) + " " + (.timestamp | todate)))"' ${MESOS_MASTER_STATE} | sort -k 1)" | column -t
 }
@@ -289,7 +293,7 @@ case "${1,,}" in
         # Agent list
         printAgentList
         ;;
-      "$(jq -r '"\(.slaves[] | select(.id == "'$2'") | .id)"' $MESOS_MASTER_STATE)" )
+      "$(jq -r '"\(.slaves[] | select(.id == "'$2'") | .id)"' "${MESOS_MASTER_STATE}")" )
         AGENT_ID=$2
         case "${3,,}" in
           "resources" )
