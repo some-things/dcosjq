@@ -29,7 +29,6 @@
 # .slaves[]
 # .frameworks[]
 # jq -r '.frameworks[].tasks[].role' 5050-master_state.json | uniq <-- doesn't show * :/
-
 #########################
 
 #####
@@ -201,7 +200,8 @@ printFrameworkCommandUsage () {
 # Need to fix the main framework part of this so that empty strings don't get processed if we put the "" option after...
 case "${1,,}" in
   "framework" )
-    case "${2,,}" in
+    # Beware of case sensitivity here :)
+    case "${2}" in
       "" )
         # Framework command usage
         printFrameworkCommandUsage
@@ -242,11 +242,11 @@ esac
 #####
 # Agent
 #####
-# echo -e "ID HOSTNAME ACTIVE\n$(jq -r '.slaves[] | "\(.id) \(.hostname) \(.active)"' 5050-master_state.json | sort -k 3)" | column -t
 printAgentList () {
-  echo -e "ID HOSTNAME\n$(jq -r '.slaves[] | "\(.id) \(.hostname)"' $MESOS_STATE_SUMMARY | sort -k 2)" | column -t
+  echo -e "ID HOSTNAME ACTIVE\n$(jq -r '"\(.slaves[] | (.id) + " " + (.hostname) + " " + (.active | tostring))"' "${MESOS_MASTER_STATE}" | sort -k 2)" | column -t
 }
 
+# Need to do something crafty with this... Perhaps just print similar output to the summary but more readable...
 printAgentSummary () {
   jq '.slaves[] | select(.id == "'$AGENT_ID'") | .' $MESOS_STATE_SUMMARY
 }
@@ -256,42 +256,71 @@ printAgentResources () {
 }
 
 printAgentFrameworks () {
-  jq '.slaves[] | select(.id == "'$AGENT_ID'") | .framework_ids[]' $MESOS_STATE_SUMMARY
+  echo -e "ID NAME\n$(jq -r '.frameworks[] | {id: .id, name: .name, slave_id: .tasks[].slave_id} | select(.slave_id == "'$AGENT_ID'") | "\((.id) + " " + (.name))"' "${MESOS_MASTER_STATE}" | sort -u -k 2)" | column -t
 }
 
 printAgentTasks () {
   echo -e "ID NAME CURRENT_STATE STATES TIMESTAMP\n$(jq -r '"\(.frameworks[].tasks[] | select(.slave_id == "'$AGENT_ID'") | (.id) + " " +  (.name) + " " + (.state) + " " + (.statuses[] | (.state) + " " + (.timestamp | todate)))"' ${MESOS_MASTER_STATE} | sort -k 1)" | column -t
 }
 
-if [[ $1 == "agent" ]]; then
-  if [[ $# -eq 1 ]]; then
-    # Print usage
-    echo "Print agent usage here, etc."
-  elif [[ $# -gt 1 ]]; then
-    if [[ $2 == "list" ]]; then
-      # Print agent list (Need to add Mesos 'hostname' (IP) here)
-      printAgentList
-    elif [[ ! -z $(jq -r '.slaves[] | select(.id == "'$2'") | "\(.id)"' $MESOS_STATE_SUMMARY) ]]; then
-      AGENT_ID=$2
-      if [[ $# -eq 2 ]]; then
-        # Print <agent-id> summary
-        printAgentSummary
-      elif [[ $3 == "resources" ]]; then
-        # Print <agent-id> resources
-        printAgentResources
-      elif [[ $3 == "frameworks" ]]; then
-        # Print <agent-id> frameworks
-        printAgentFrameworks
-      elif [[ $3 == "tasks" ]]; then
-        # Print <agent-id> tasks
-        printAgentTasks
-      fi
-    else
-      echo "ERROR: '$2' is not a valid command or agent-id. Please try again."
-      echo "Print framework usage here, etc."
-    fi
-  fi
-fi
+# printAgentRoles () {
+#   echo "blah blah blah"
+# }
+
+printAgentCommandUsage () {
+  echo -e "DCOSJQ Agent Usage:"
+  (echo -e "agent list - Prints agent id and name of each agent"
+  echo -e "agent <agent-id> - Prints a summary of the specified agent"
+  echo -e "agent <agent-id> resources - Prints resource summary of the specified agent"
+  echo -e "agent <agent-id> frameworks - Prints the framework-ids associated with the agent"
+  echo -e "agent <agent-id> tasks - Prints the id, name, role, slave id, and state of each task associated with the agent") | sed 's/^/     /g'
+}
+
+# Need to fix the main agent part of this so that empty strings don't get processed if we put the "" option after...
+case "${1,,}" in
+  "agent" )
+    # Beware of case sensitivity here :)
+    case "${2}" in
+      "" )
+        # Agent command usage
+        printAgentCommandUsage
+        ;;
+      "list" )
+        # Agent list
+        printAgentList
+        ;;
+      "$(jq -r '"\(.slaves[] | select(.id == "'$2'") | .id)"' $MESOS_MASTER_STATE)" )
+        AGENT_ID=$2
+        case "${3,,}" in
+          "resources" )
+            # Agent <id> resources
+            printAgentResources
+            ;;
+          "frameworks" )
+            # Agent <id> frameworks
+            printAgentFrameworks
+            ;;
+          "tasks" )
+            # Agent <id> tasks
+            printAgentTasks
+            ;;
+          # "roles" )
+          #   # Agent <id> roles
+          #   printAgentRoles
+          #   ;;
+          * )
+            # Agent <id> summary
+            printAgentSummary
+            ;;
+        esac
+        ;;
+      * )
+        # Agent command usage
+        printAgentCommandUsage
+        ;;
+    esac
+    ;;
+esac
 
 #####
 # Role
