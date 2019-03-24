@@ -196,7 +196,8 @@ printFrameworkCommandUsage () {
   (echo -e "framework list - Prints framework id and name of each framework"
   echo -e "framework <framework-id> - Prints a summary of the specified framework"
   echo -e "framework <framework-id> agents - Prints the slave-ids associated with the framework"
-  echo -e "framework <framework-id> tasks - Prints the id, name, role, slave id, and state of each task associated with the framework") | sed 's/^/     /g'
+  echo -e "framework <framework-id> tasks - Prints the id, name, role, slave id, and state of each task associated with the framework"
+  echo -e "framework <framework-id> roles - Prints the roles associated with the framework") | sed 's/^/     /g'
 }
 
 # Need to fix the main framework part of this so that empty strings don't get processed if we put the "" option after...
@@ -347,30 +348,37 @@ printRoleCommandUsage () {
   echo -e "role <role-name> agents - Prints the agents assoiceted with the specified role") | sed 's/^/     /g'
 }
 
-if [[ $1 == "role" ]]; then
-  if [[ $# -eq 1 ]]; then
-    # Print usage
-    echo "Print role usage here, etc."
-  elif [[ $# -gt 1 ]]; then
-    if [[ $2 == "list" ]]; then
-      # Print role list
-      printRoleList
-    elif [[ ! -z $(jq -r '.roles[] | select(.name == "'$2'" ) | "\(.name)"' $MESOS_LEADER_DIR/5050-master_roles.json) ]]; then
-      ROLE_NAME=$2
-      if [[ $# -eq 2 ]]; then
-        # Print <role-id> summary
-        printRoleSummary
-      elif [[ $3 == "agents" ]]; then
-        # Print <role-id> agents
-        printRoleAgents
-      fi
-    else
-      # Subcommand/framework-id not found
-      echo "ERROR: '$2' is not a valid command or role. Please try again."
-      printRoleCommandUsage
-    fi
-  fi
-fi
+case "${1,,}" in
+  "role" )
+    case "${2}" in
+      "" )
+        # Role command usage
+        printRoleCommandUsage
+        ;;
+      "list" )
+        # Role list
+        printRoleList
+        ;;
+      "$(jq -r '.roles[] | select(.name == "'$2'" ) | "\(.name)"' $MESOS_LEADER_DIR/5050-master_roles.json)" )
+        ROLE_NAME=$2
+        case "${2}" in
+          "agents" )
+            # Role <id> agents
+            printRoleAgents
+            ;;
+          * )
+            # Role <id> summary
+            printRoleSummary
+            ;;
+        esac
+        ;;
+      * )
+        # Role command usage
+        printRoleCommandUsage
+        ;;
+    esac
+    ;;
+esac
 
 #####
 # Checks
