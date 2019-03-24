@@ -179,9 +179,8 @@ printFrameworkIDSummary () {
   jq '.frameworks[] | select(.id == "'$FRAMEWORK_ID'")' "${MESOS_STATE_SUMMARY}"
 }
 
-# This needs to be rewritten to a single jq command without any loops
 printFrameworkIDAgents () {
-  echo -e "HOSTNAME SLAVE_ID\n$(for i in $(jq -r '.frameworks[] | select(.id == "'$FRAMEWORK_ID'") | .tasks[].slave_id' "${MESOS_MASTER_STATE}" | sort -u); do jq -r '"\(.slaves[] | select(.id == "'$i'") | (.hostname) + " " + (.id))"' "${MESOS_MASTER_STATE}"; done | sort -k 1)" | column -t
+  echo -e "HOSTNAME SLAVE_ID ACTIVE\n$(jq -r '(.frameworks[] | select(.id == "'$FRAMEWORK_ID'").tasks[].slave_id) as $SLAVEIDS | .slaves[] | select(.id | contains($SLAVEIDS)) | "\((.hostname) + " " + (.id) + " " + (.active | tostring))"' "${MESOS_MASTER_STATE}" | sort -u)" | column -t
 }
 
 printFrameworkIDTasks () {
