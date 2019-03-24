@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 
 # TODO:
+#####
+#
+# Rewrite and add functions as needed for if a bundle is complete or if we are only limited to certain state files.
+#
+#####
+
 ########################
 # master
 # agent
@@ -90,6 +96,7 @@ fi
 
 #####
 # Bundle pre-flight checks
+# TODO: Make these less finicky
 #####
 # Check that current dir is a bundle dir
 if [[ $(pwd) != *"bundle"* ]]; then
@@ -103,6 +110,7 @@ fi
 
 #####
 # Find the leading Mesos master directory
+# TODO: Make these less finicky
 #####
 # NEED TO ADD A CHECK THAT HOSTNAME ISN'T NULL!
 # echo "ERROR: Hostname field empty. Please verify that ${MESOS_LEADER_DIR}/5050-registrar_1__registry.json has valid information."
@@ -117,9 +125,10 @@ for i in $(find ./*master* -type f -name 5050-registrar_1__registry.json); do
     fi
     # Set the Mesos leader dir based on HOSTNAME_master format
     MESOS_LEADER_DIR="$(pwd)/${MESOS_LEADER_HOSTNAME}_master"
+    MESOS_MASTER_STATE="${MESOS_LEADER_DIR}/5050-master_state.json"
     MESOS_STATE_SUMMARY="${MESOS_LEADER_DIR}/5050-master_state-summary.json"
     # Verify the Mesos leader dir exists (this could be done better)
-    if [[ -z $(ls -l $MESOS_LEADER_DIR | grep -vi 'no such') ]]; then
+    if [[ ! -d "${MESOS_LEADER_DIR}" ]]; then
       echo "ERROR: Couldn't find a the leading Mesos master directory within this directory. Expected path: ${MESOS_LEADER_DIR}"
       exit
     fi
@@ -140,7 +149,7 @@ esac
 # Cluster
 #####
 printClusterResources () {
-  echo -e "AGENT_ID IP RESOURCE TOTAL UNRESERVED RESERVED USED\n$(jq -r '"\(.slaves[] | (.id) + " " + (.hostname) + " CPU "+ (.resources.cpus | tostring) + " " + (.unreserved_resources.cpus | tostring) + " " + (.resources.cpus - .unreserved_resources.cpus | tostring) + " " + (.used_resources.cpus | tostring) + "\n - - MEM "+ (.resources.mem | tostring) + " " + (.unreserved_resources.mem | tostring) + " " + (.resources.mem - .unreserved_resources.mem | tostring) + " " + (.used_resources.mem | tostring) + "\n - - DISK "+ (.resources.disk | tostring) + " " + (.unreserved_resources.disk | tostring) + " " + (.resources.disk - .unreserved_resources.disk | tostring) + " " + (.used_resources.disk | tostring) + "\n - - GPU "+ (.resources.gpus | tostring) + " " + (.unreserved_resources.gpus | tostring) + " " + (.resources.gpus - .unreserved_resources.gpus | tostring) + " " + (.used_resources.gpus | tostring))"' ${MESOS_LEADER_DIR}/5050-master_state.json)" | column -t
+  echo -e "AGENT_ID IP RESOURCE TOTAL UNRESERVED RESERVED USED\n$(jq -r '"\(.slaves[] | (.id) + " " + (.hostname) + " CPU "+ (.resources.cpus | tostring) + " " + (.unreserved_resources.cpus | tostring) + " " + (.resources.cpus - .unreserved_resources.cpus | tostring) + " " + (.used_resources.cpus | tostring) + "\n - - MEM "+ (.resources.mem | tostring) + " " + (.unreserved_resources.mem | tostring) + " " + (.resources.mem - .unreserved_resources.mem | tostring) + " " + (.used_resources.mem | tostring) + "\n - - DISK "+ (.resources.disk | tostring) + " " + (.unreserved_resources.disk | tostring) + " " + (.resources.disk - .unreserved_resources.disk | tostring) + " " + (.used_resources.disk | tostring) + "\n - - GPU "+ (.resources.gpus | tostring) + " " + (.unreserved_resources.gpus | tostring) + " " + (.resources.gpus - .unreserved_resources.gpus | tostring) + " " + (.used_resources.gpus | tostring))"' ${MESOS_MASTER_STATE})" | column -t
 }
 
 case "${1,,}" in
@@ -155,25 +164,30 @@ esac
 
 #####
 # Framework
+# TODO:
+#     - Fix framework summary function
+#     - Fix framework <id> agents function
 #####
 printFrameworkList () {
-  echo -e "ID NAME\n $(jq -r '.frameworks[] | "\(.id) \(.name)"' $MESOS_STATE_SUMMARY)" | column -t
+  echo -e "ID NAME\n$(jq -r '.frameworks[] | "\(.id + " " + .name)"' "${MESOS_MASTER_STATE}" | sort -k 2)" | column -t
 }
 
+# Need to do something crafty with this... Perhaps just print similar output to the summary but more readable...
 printFrameworkIDSummary () {
-  jq '.frameworks[] | select(.id == "'$FRAMEWORK_ID'")' $MESOS_STATE_SUMMARY
+  jq '.frameworks[] | select(.id == "'$FRAMEWORK_ID'")' "${MESOS_STATE_SUMMARY}"
 }
 
+# This needs to be rewritten to a single jq command without any loops
 printFrameworkIDAgents () {
-  echo -e "ID\n$(jq -r '.frameworks[] | select(.id == "'$FRAMEWORK_ID'") | .slave_ids[]' $MESOS_STATE_SUMMARY)" | column -t
-}
-
-printFrameworkIDRoles () {
-  echo -e "ROLE_NAME\n$(jq -r '.frameworks[] | select(.id == "'${FRAMEWORK_ID}'") | .tasks[].role' "${MESOS_MASTER_STATE}" | sort -u)"
+  echo -e "HOSTNAME SLAVE_ID\n$(for i in $(jq -r '.frameworks[] | select(.id == "'$FRAMEWORK_ID'") | .tasks[].slave_id' "${MESOS_MASTER_STATE}" | sort -u); do jq -r '"\(.slaves[] | select(.id == "'$i'") | (.hostname) + " " + (.id))"' "${MESOS_MASTER_STATE}"; done | sort -k 1)" | column -t
 }
 
 printFrameworkIDTasks () {
-  echo -e "ID NAME ROLE SLAVE_ID STATE\n $(jq -r '.frameworks[] | select(.id == "'$FRAMEWORK_ID'") | .tasks[] | "\(.id) \(.name) \(.role) \(.slave_id) \(.state)"' $MESOS_LEADER_DIR/5050-master_frameworks.json | sort)" | column -t
+  echo -e "ID NAME CURRENT_STATE STATES TIMESTAMP\n$(jq -r '"\(.frameworks[].tasks[] | select(.framework_id == "'$FRAMEWORK_ID'") | (.id) + " " +  (.name) + " " + (.state) + " " + (.statuses[] | (.state) + " " + (.timestamp | todate)))"' "${MESOS_MASTER_STATE}" | sort -k 1)" | column -t
+}
+
+printFrameworkIDRoles () {
+  echo -e "ROLE_NAME\n$(jq -r '"\(.frameworks[] | select(.id == "'$FRAMEWORK_ID'") | (.role) + "\n" + (.tasks[].role))"' "${MESOS_MASTER_STATE}" | sort -u)" | column -t
 }
 
 printFrameworkCommandUsage () {
@@ -184,53 +198,40 @@ printFrameworkCommandUsage () {
   echo -e "framework <framework-id> tasks - Prints the id, name, role, slave id, and state of each task associated with the framework") | sed 's/^/     /g'
 }
 
-# WIP
-# case "${1,,}" in
-#   "framework" )
-#     case "${2,,}" in
-#       "--help" )
-#         printFrameworkCommandUsage
-#         ;;
-#       * )
-#         echo -e "ERROR: Invalid subcommand or framework id. Please see 'dcosjq framework --help' for usage."
-#         ;;
-#     esac
-#     ;;
-# esac
-
-if [[ $1 == "framework" ]]; then
-  if [[ $# -eq 1 ]]; then
-    # If naked, print usage
-    echo "Print framework usage here, etc."
-  elif [[ $# -gt 1 ]]; then
-    if [[ $2 == "list" ]]; then
-      # Framework list
-      printFrameworkList
-    elif [[ ! -z $(jq -r '.frameworks[] | select(.id == "'$2'") | "\(.id)"' $MESOS_STATE_SUMMARY) ]]; then
-      FRAMEWORK_ID=$2
-      if [[ $# -eq 2 ]]; then
-        # Print summary for <framework-id>
-        printFrameworkIDSummary
-      elif [[ $3 == "agents" ]]; then
-        # Print agents associated with <framework-id>
-        printFrameworkIDAgents
-      elif [[ $3 == "tasks" ]]; then
-        # Print tasks associated with <framework-id>
-        printFrameworkIDTasks
-      fi
-    else
-      # Subcommand/framework-id not found
-      echo "ERROR: '$2' is not a valid command or framework-id. Please try again."
-      printFrameworkCommandUsage
-    fi
-  fi
-fi
+# Need to fix the main framework part of this so that empty strings don't get processed if we put the "" option after...
+case "${1,,}" in
+  "framework" )
+    case "${2,,}" in
+      "" )
+        # Framework command usage
+        printFrameworkCommandUsage ;;
+      "list" )
+        # Framework list
+        printFrameworkList ;;
+      "$(jq -r '"\(.frameworks[] | select(.id == "'$2'") | .id)"' "${MESOS_MASTER_STATE}")" )
+        FRAMEWORK_ID=$2
+        case "${3,,}" in
+          "agents" )
+            printFrameworkIDAgents ;;
+          "tasks" )
+            printFrameworkIDTasks ;;
+          "roles" )
+            printFrameworkIDRoles ;;
+          * )
+            printFrameworkIDSummary ;;
+        esac ;;
+      * )
+        # Framework command usage
+        printFrameworkCommandUsage ;;
+    esac ;;
+esac
 
 #####
 # Agent
 #####
+# echo -e "ID HOSTNAME ACTIVE\n$(jq -r '.slaves[] | "\(.id) \(.hostname) \(.active)"' 5050-master_state.json | sort -k 3)" | column -t
 printAgentList () {
-  echo -e "ID HOSTNAME\n $(jq -r '.slaves[] | "\(.id) \(.hostname)"' $MESOS_STATE_SUMMARY | sort -k 2)" | column -t
+  echo -e "ID HOSTNAME\n$(jq -r '.slaves[] | "\(.id) \(.hostname)"' $MESOS_STATE_SUMMARY | sort -k 2)" | column -t
 }
 
 printAgentSummary () {
@@ -238,11 +239,15 @@ printAgentSummary () {
 }
 
 printAgentResources () {
-  echo -e "AGENT_ID IP RESOURCE TOTAL UNRESERVED RESERVED USED\n$(jq -r '"\(.slaves[] | select(.id == "'$AGENT_ID'") | (.id) + " " + (.hostname) + " CPU "+ (.resources.cpus | tostring) + " " + (.unreserved_resources.cpus | tostring) + " " + (.resources.cpus - .unreserved_resources.cpus | tostring) + " " + (.used_resources.cpus | tostring) + "\n - - MEM "+ (.resources.mem | tostring) + " " + (.unreserved_resources.mem | tostring) + " " + (.resources.mem - .unreserved_resources.mem | tostring) + " " + (.used_resources.mem | tostring) + "\n - - DISK "+ (.resources.disk | tostring) + " " + (.unreserved_resources.disk | tostring) + " " + (.resources.disk - .unreserved_resources.disk | tostring) + " " + (.used_resources.disk | tostring) + "\n - - GPU "+ (.resources.gpus | tostring) + " " + (.unreserved_resources.gpus | tostring) + " " + (.resources.gpus - .unreserved_resources.gpus | tostring) + " " + (.used_resources.gpus | tostring))"' ${MESOS_LEADER_DIR}/5050-master_state.json)" | column -t
+  echo -e "AGENT_ID IP RESOURCE TOTAL UNRESERVED RESERVED USED\n$(jq -r '"\(.slaves[] | select(.id == "'$AGENT_ID'") | (.id) + " " + (.hostname) + " CPU "+ (.resources.cpus | tostring) + " " + (.unreserved_resources.cpus | tostring) + " " + (.resources.cpus - .unreserved_resources.cpus | tostring) + " " + (.used_resources.cpus | tostring) + "\n - - MEM "+ (.resources.mem | tostring) + " " + (.unreserved_resources.mem | tostring) + " " + (.resources.mem - .unreserved_resources.mem | tostring) + " " + (.used_resources.mem | tostring) + "\n - - DISK "+ (.resources.disk | tostring) + " " + (.unreserved_resources.disk | tostring) + " " + (.resources.disk - .unreserved_resources.disk | tostring) + " " + (.used_resources.disk | tostring) + "\n - - GPU "+ (.resources.gpus | tostring) + " " + (.unreserved_resources.gpus | tostring) + " " + (.resources.gpus - .unreserved_resources.gpus | tostring) + " " + (.used_resources.gpus | tostring))"' ${MESOS_MASTER_STATE})" | column -t
 }
 
 printAgentFrameworks () {
   jq '.slaves[] | select(.id == "'$AGENT_ID'") | .framework_ids[]' $MESOS_STATE_SUMMARY
+}
+
+printAgentTasks () {
+  echo -e "ID NAME CURRENT_STATE STATES TIMESTAMP\n$(jq -r '"\(.frameworks[].tasks[] | select(.slave_id == "'$AGENT_ID'") | (.id) + " " +  (.name) + " " + (.state) + " " + (.statuses[] | (.state) + " " + (.timestamp | todate)))"' ${MESOS_MASTER_STATE} | sort -k 1)" | column -t
 }
 
 if [[ $1 == "agent" ]]; then
@@ -266,7 +271,7 @@ if [[ $1 == "agent" ]]; then
         printAgentFrameworks
       elif [[ $3 == "tasks" ]]; then
         # Print <agent-id> tasks
-        echo "Not implemented."
+        printAgentTasks
       fi
     else
       echo "ERROR: '$2' is not a valid command or agent-id. Please try again."
