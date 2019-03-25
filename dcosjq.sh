@@ -48,9 +48,9 @@ fi
 formatJSON () {
   if [[ ! -z $JSON_FILES ]]; then
     echo "Formatting JSON..."
-    for i in $(find . -type f -name '*.json'); do
-      cat <<< "$(jq '.' < $i 2> /dev/null)" > $i
-    done
+    find . -name '*.json' -exec sh -c '
+    cat <<< "$(jq '.' < $1 2> /dev/null)" > $1
+    ' sh {} \;
     echo "Formatting complete."
   else
     echo "Error: No JSON files found within this directory and its subdirectories."
@@ -80,7 +80,7 @@ if [[ $1 == "extract" ]]; then
     BUNDLE_DIR="${BASE_DIR}/${TICKET_NUM}/${2%%.zip}"
     echo "Extracting bundle to ${BUNDLE_DIR}..."
     unzip -q -d "${BUNDLE_DIR}" "${2}"
-    echo "Gunzip-ing all bundle files..."
+    echo "Decompressing all bundle files..."
     gunzip -q -r "${BUNDLE_DIR}"
     JSON_FILES="$(find ${BUNDLE_DIR} -type f -name '*.json')"
     formatJSON
@@ -104,7 +104,7 @@ if [[ $(pwd) != *"bundle"* ]]; then
   echo "ERROR: The working directory, $(pwd), doesn't seem to be a bundle directory. Please verify the working directory name contains 'bundle'."
   exit
 # Ensure at least one master folder exists
-elif [[ $(ls -l | grep -i 'master') != *"master"* ]]; then
+elif [[ -z $(ls *master 2> /dev/null) ]]; then
   echo "ERROR: Unable to find a directory containing the name 'master'. Please ensure that the folder containing the master state files and logs is a name contains the string 'master'."
   exit
 fi
@@ -115,13 +115,13 @@ fi
 #####
 # NEED TO ADD A CHECK THAT HOSTNAME ISN'T NULL!
 # echo "ERROR: Hostname field empty. Please verify that ${MESOS_LEADER_DIR}/5050-registrar_1__registry.json has valid information."
-for i in $(find ./*master* -type f -name 5050-registrar_1__registry.json); do
+for i in *master*/5050-registrar_1__registry.json; do
   if [[ ! -z $(jq '.master.info.hostname' $i | grep -vi 'null\|\[\|\]' | cut -d '"' -f 2) ]]; then
     # Set the Mesos leader hostname
     MESOS_LEADER_HOSTNAME="$(jq '.master.info.hostname' $i | grep -vi 'null\|\[\|\]' | cut -d '"' -f 2 | uniq)"
     # Check if somehow we're seeing multiple leading masters
     if [[ ! -z $(echo $MESOS_LEADER_HOSTNAME | awk '{print $2}') ]]; then
-      echo -e "ERROR: Detected multiple entries for the leading Mesos master. Please address these issues. The hostnames found were:\n ${MESOS_LEADER_HOSTNAME}"
+      echo -e "ERROR: Detected multiple entries for the leading Mesos master. Please address these issues. The hostnames found were:\n${MESOS_LEADER_HOSTNAME}"
       exit
     fi
     # Set the Mesos leader dir based on HOSTNAME_master format
@@ -398,7 +398,7 @@ checkErrors () {
   #####
   # DC/OS verion uniqueness check
   #####
-  DCOS_VERSIONS="$((jq -r '"\(.node_role) \(.ip) \(.dcos_version)"' */dcos-diagnostics-health.json | sort -k 3; jq -r '"\(.node_role) \(.ip) \(.dcos_version)"' */3dt-health.json | sort -k 3) 2> /dev/null)"
+  DCOS_VERSIONS="$( (jq -r '"\(.node_role) \(.ip) \(.dcos_version)"' */dcos-diagnostics-health.json | sort -k 3; jq -r '"\(.node_role) \(.ip) \(.dcos_version)"' */3dt-health.json | sort -k 3) 2> /dev/null)"
   if [[ $(echo "$DCOS_VERSIONS" | awk '{print$3}' | uniq | wc -l) -gt 1 ]]; then
     echo -e "\xE2\x9D\x8C Multiple DC/OS versions detected:"
     echo -e "NODE_TYPE IP DCOS_VERSION\n$DCOS_VERSIONS" | column -t | sed 's/^/     /g'
@@ -409,7 +409,7 @@ checkErrors () {
   #####
   # DC/OS component healthiness check
   #####
-  FAILED_UNITS="$((jq -r '"\(.node_role) \(.ip) \(.hostname) \(.units[] | select(.health != 0) | .id + " " + (.health | tostring))"' */dcos-diagnostics-health.json; jq -r '"\(.node_role) \(.ip) \(.hostname) \(.units[] | select(.health != 0) | .id + " " + (.health | tostring))"' */3dt-health.json) 2> /dev/null)"
+  FAILED_UNITS="$( (jq -r '"\(.node_role) \(.ip) \(.hostname) \(.units[] | select(.health != 0) | .id + " " + (.health | tostring))"' */dcos-diagnostics-health.json; jq -r '"\(.node_role) \(.ip) \(.hostname) \(.units[] | select(.health != 0) | .id + " " + (.health | tostring))"' */3dt-health.json) 2> /dev/null)"
   if [[ ! -z $FAILED_UNITS ]]; then
     echo -e "\xE2\x9D\x8C Failed DC/OS components found:"
     echo -e "NODE_TYPE IP HOSTNAME SERVICE STATUS\n$FAILED_UNITS" | column -t | sed 's/^/     /g'
