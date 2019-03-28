@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 
+
+# Add this:
+#  echo -e "ID HOSTNAME REG_TIME\n$(jq -r '"\(.slaves[] | (.id) + " " + (.hostname) + " " + (.registered_time | todate))"' 5050-master_state.json)" | column -t
+
+
 # TODO:
 #####
 #
@@ -48,7 +53,7 @@ fi
 formatJSON () {
   if [[ ! -z $JSON_FILES ]]; then
     echo "Formatting JSON..."
-    find . -name '*.json' -exec sh -c '
+    find $JSON_DIR -name '*.json' -exec sh -c '
     cat <<< "$(jq '.' < $1 2> /dev/null)" > $1
     ' sh {} \;
     echo "Formatting complete."
@@ -60,6 +65,7 @@ formatJSON () {
 case "${1,,}" in
   "format" )
     JSON_FILES="$(find . -type f -name '*.json')"
+    JSON_DIR="$(pwd)"
     formatJSON
     exit
     ;;
@@ -83,6 +89,7 @@ if [[ $1 == "extract" ]]; then
     echo "Decompressing all bundle files..."
     gunzip -q -r "${BUNDLE_DIR}"
     JSON_FILES="$(find ${BUNDLE_DIR} -type f -name '*.json')"
+    JSON_DIR="${BUNDLE_DIR}"
     formatJSON
     # Move the compressed log bundle to the 'storage' directory; Comment the next 2 lines out to not move the original file.
     mkdir -p "${TICKET_DIR}/storage"
@@ -184,7 +191,8 @@ printFrameworkIDAgents () {
 }
 
 printFrameworkIDTasks () {
-  echo -e "ID NAME CURRENT_STATE STATES TIMESTAMP SLAVE_ID\n$(jq -r '"\(.frameworks[].tasks[] | select(.framework_id == "'$FRAMEWORK_ID'") | (.id) + " " +  (.name) + " " + (.state) + " " + (.statuses[] | (.state) + " " + (.timestamp | todate)) + " " + (.slave_id))"' "${MESOS_MASTER_STATE}" | sort -k 1)" | column -t
+  # echo -e "ID NAME CURRENT_STATE STATES TIMESTAMP SLAVE_ID\n$(jq -r '"\(.frameworks[].tasks[] | select(.framework_id == "'$FRAMEWORK_ID'") | (.id) + " " +  (.name) + " " + (.state) + " " + (.statuses[] | (.state) + " " + (.timestamp | todate)) + " " + (.slave_id))"' "${MESOS_MASTER_STATE}" | sort -k 1)" | column -t
+  echo -e "ID CURRENT_STATE STATES TIMESTAMP SLAVE_ID\n$(jq -r '"\(.frameworks[].tasks[] | select(.framework_id == "'$FRAMEWORK_ID'") | (.id) + " " + (.state) + " " + (.statuses[] | (.state) + " " + (.timestamp | todate)) + " " + (.slave_id))"' "${MESOS_MASTER_STATE}" | sort -k 1)" | column -t
 }
 
 printFrameworkIDRoles () {
