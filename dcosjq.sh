@@ -1,9 +1,7 @@
 #!/usr/bin/env bash
-
-
-# Add this:
-#  echo -e "ID HOSTNAME REG_TIME\n$(jq -r '"\(.slaves[] | (.id) + " " + (.hostname) + " " + (.registered_time | todate))"' 5050-master_state.json)" | column -t
-
+set -o errexit
+set -o pipefail
+set -o nounset
 
 # TODO:
 #####
@@ -37,6 +35,15 @@
 # .frameworks[]
 # jq -r '.frameworks[].tasks[].role' 5050-master_state.json | uniq <-- doesn't show * :/
 #########################
+
+
+# exhibitor
+# - 443-exhibitor_exhibitor_v1_cluster_status.json
+
+
+# jq -r '"\(.frameworks[].unreachable_tasks[] | (.name) + " " + (.framework_id) + " " + (.slave_id) + " " + (.state) + " " + (select(.statuses[].state == .state) | .timestamp))"' 5050-master_state.json | column -t
+
+# marathon
 
 #####
 # JQ pre-flight checks
@@ -251,10 +258,28 @@ case "${1,,}" in
 esac
 
 #####
+# App (Marathon)
+#####
+# app list
+# echo -e "NAME VERSION\n$(jq -r '"\(.apps[] | (.id) + " " + (.version))"' 8443-v2_apps.json)" | column -t
+# app show
+# jq '.apps[] | select(.id == "'$2'"))' 8443-v2_apps.json
+
+
+
+
+
+
+#####
+# Task
+#####
+
+
+#####
 # Agent
 #####
 printAgentList () {
-  echo -e "ID HOSTNAME ACTIVE\n$(jq -r '"\(.slaves[] | (.id) + " " + (.hostname) + " " + (.active | tostring))"' "${MESOS_MASTER_STATE}" | sort -k 2)" | column -t
+  echo -e "ID HOSTNAME ACTIVE REGISTERED\n$(jq -r '"\(.slaves[] | (.id) + " " + (.hostname) + " " + (.active | tostring) + " " + (.registered_time | todate))"' "${MESOS_MASTER_STATE}" | sort -k 2)" | column -t
 }
 
 # Need to do something crafty with this... Perhaps just print similar output to the summary but more readable...
