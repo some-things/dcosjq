@@ -1,31 +1,18 @@
 #!/usr/bin/env bash
-# set -o errexit # This causes the script to exit due to gunzip -q -r "${BUNDLE_DIR}" - fix this later
+# set -o errexit -- Need to fix things up before we set this
 set -o pipefail
 set -o nounset
 
 # TODO:
-#####
-#
-# Rewrite and add functions as needed for if a bundle is complete or if we are only limited to certain state files.
-#
-# It likely makes sense to add a flag to show the transitions of each task... we should also look into failed/lost/etc. tasks
-#
-#####
-
 ########################
-# master
-# agent
-# framework
-# role
-# offers(?)
-# unreachable
-# Add fix so that this can be run from any dir within a bundle (Make sure to remove the associated section from 'pre-flight checks' when implementing this...)
-# Rewrite things so we don't need to have exits for stuff ran before the master dir checks...
-# Add var for MESOS_MASTER_STATE
+# - Rewrite and add functions as needed for if a bundle is complete or if we are only limited to certain state files.
+# - It likely makes sense to add a flag to show the transitions of each task... we should also look into failed/lost/etc. tasks
+########################
+# - Add fix so that this can be run from any dir within a bundle (Make sure to remove the associated section from 'pre-flight checks' when implementing this...)
+# - Rewrite things so we don't need to have exits for stuff ran before the master dir checks...
+# - Add var for MESOS_MASTER_STATE...
 #########################
-
-
-# SNIPPETS TO IMPLEMENT:
+# Random snippets...:
 # jq -r '.leader_info.hostname' */5050-master_state.json
 # jq -r '.activated_slaves' */5050-master_state.json
 # jq -r '.deactivated_slaves' */5050-master_state.json
@@ -35,12 +22,9 @@ set -o nounset
 # .version
 # .slaves[]
 # .frameworks[]
-# jq -r '.frameworks[].tasks[].role' 5050-master_state.json | uniq <-- doesn't show * :/
-#########################
-
+# jq -r '.frameworks[].tasks[].role' 5050-master_state.json | uniq <-- doesn't show * :()
 # jq -r '"\(.frameworks[].unreachable_tasks[] | (.name) + " " + (.framework_id) + " " + (.slave_id) + " " + (.state) + " " + (select(.statuses[].state == .state) | .timestamp))"' 5050-master_state.json | column -t
-
-# marathon
+#########################
 
 #####
 # JQ pre-flight checks
@@ -91,7 +75,7 @@ extractBundle ()  {
     echo "Extracting bundle to ${BUNDLE_DIR}..."
     unzip -q -d "${BUNDLE_DIR}" "${1}"
     echo "Decompressing all bundle files..."
-    gunzip -q -r "${BUNDLE_DIR}"
+    find "${BUNDLE_DIR}" -type f -name '*.gz' -exec gunzip -q "{}" \;
     JSON_FILES="$(find ${BUNDLE_DIR} -type f -name '*.json')"
     JSON_DIR="${BUNDLE_DIR}"
     formatJSON
@@ -311,11 +295,6 @@ esac
 # echo -e "NAME VERSION\n$(jq -r '"\(.apps[] | (.id) + " " + (.version))"' 8443-v2_apps.json)" | column -t
 # app show
 # jq '.apps[] | select(.id == "'$2'"))' 8443-v2_apps.json
-
-
-
-
-
 
 #####
 # Task
