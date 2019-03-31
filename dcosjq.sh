@@ -290,12 +290,44 @@ case "${1,,}" in
 esac
 
 #####
-# App (Marathon)
+# Marathon
 #####
-# app list
-# echo -e "NAME VERSION\n$(jq -r '"\(.apps[] | (.id) + " " + (.version))"' 8443-v2_apps.json)" | column -t
-# app show
-# jq '.apps[] | select(.id == "'$2'"))' 8443-v2_apps.json
+printMarathonLeader () {
+  jq -r '"Marathon Leader: \(.leader)"' "${MESOS_LEADER_DIR}/8443-v2_leader.json"
+}
+
+printMarathonAppList () {
+  echo -e "NAME VERSION\n$(jq -r '"\(.apps[] | (.id) + " " + (.version))"' "${MESOS_LEADER_DIR}/8443-v2_apps.json")" | column -t
+}
+
+printMarathonAppShow () {
+  jq '.apps[] | select(.id == "'"${APP_ID}"'")' "${MESOS_LEADER_DIR}/8443-v2_apps.json"
+}
+
+case "${1,,}" in
+  "marathon" )
+    case "${2,,}" in
+      "leader" )
+        printMarathonLeader
+        ;;
+      "app" )
+        case "${3}" in
+          "list" )
+            printMarathonAppList
+            ;;
+          "$(jq -r '"\(.apps[] | select(.id == "'"${3}"'") | .id)"' "${MESOS_LEADER_DIR}/8443-v2_apps.json")" )
+            APP_ID=$3
+            case "${4}" in
+              "show" )
+                printMarathonAppShow
+                ;;
+            esac
+            ;;
+        esac
+        ;;
+    esac
+    ;;
+esac
 
 #####
 # Task
