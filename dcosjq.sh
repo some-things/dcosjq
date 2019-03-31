@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -o errexit
+# set -o errexit # This causes the script to exit due to gunzip -q -r "${BUNDLE_DIR}" - fix this later
 set -o pipefail
 set -o nounset
 
@@ -23,6 +23,8 @@ set -o nounset
 # Rewrite things so we don't need to have exits for stuff ran before the master dir checks...
 # Add var for MESOS_MASTER_STATE
 #########################
+
+
 # SNIPPETS TO IMPLEMENT:
 # jq -r '.leader_info.hostname' */5050-master_state.json
 # jq -r '.activated_slaves' */5050-master_state.json
@@ -35,11 +37,6 @@ set -o nounset
 # .frameworks[]
 # jq -r '.frameworks[].tasks[].role' 5050-master_state.json | uniq <-- doesn't show * :/
 #########################
-
-
-# exhibitor
-# - 443-exhibitor_exhibitor_v1_cluster_status.json
-
 
 # jq -r '"\(.frameworks[].unreachable_tasks[] | (.name) + " " + (.framework_id) + " " + (.slave_id) + " " + (.state) + " " + (select(.statuses[].state == .state) | .timestamp))"' 5050-master_state.json | column -t
 
@@ -85,14 +82,14 @@ esac
 BASE_DIR="${HOME}/Documents/logs/tickets"
 
 # BASE_DIR must be set to a valid path for any 'extract' commands to function properly
-if [[ $1 == "extract" ]]; then
-  if [[ ! -z $2 ]]; then
+extractBundle ()  {
+  if [[ ! -z $1 ]]; then
     read -p "Ticket number: " TICKET_NUM
     TICKET_DIR="${BASE_DIR}/${TICKET_NUM}"
     mkdir -p "${TICKET_DIR}"
-    BUNDLE_DIR="${BASE_DIR}/${TICKET_NUM}/${2%%.zip}"
+    BUNDLE_DIR="${BASE_DIR}/${TICKET_NUM}/${1%%.zip}"
     echo "Extracting bundle to ${BUNDLE_DIR}..."
-    unzip -q -d "${BUNDLE_DIR}" "${2}"
+    unzip -q -d "${BUNDLE_DIR}" "${1}"
     echo "Decompressing all bundle files..."
     gunzip -q -r "${BUNDLE_DIR}"
     JSON_FILES="$(find ${BUNDLE_DIR} -type f -name '*.json')"
@@ -100,14 +97,20 @@ if [[ $1 == "extract" ]]; then
     formatJSON
     # Move the compressed log bundle to the 'storage' directory; Comment the next 2 lines out to not move the original file.
     mkdir -p "${TICKET_DIR}/storage"
-    echo "Moving original bundle file to ${TICKET_DIR}/storage/${2}"
-    mv $2 "${TICKET_DIR}/storage/${2}"
+    echo "Moving original bundle file to ${TICKET_DIR}/storage/${1}"
+    mv $1 "${TICKET_DIR}/storage/${1}"
     echo "Finished extracting bundle to ${BUNDLE_DIR}"
   else
     echo "Please specify a compressed DC/OS diagnostic bundle file to extract."
   fi
   exit
-fi
+}
+
+case ${1,,} in
+  "extract" )
+    extractBundle "${2}"
+    ;;
+esac
 
 #####
 # Bundle pre-flight checks
@@ -151,18 +154,60 @@ for i in *master*/5050-registrar_1__registry.json; do
 done
 
 #####
-# Mesos Leader
+# Exhibitor
 #####
+printExhibitorLeader () {
+  jq -r '"Exhibitor Leader: \(.[] | select(.isLeader == true) | .hostname)"' "${MESOS_LEADER_DIR}/443-exhibitor_exhibitor_v1_cluster_status.json"
+}
+
+printExhibitorStatus () {
+  echo -e "HOSTNAME LEADER DESCRIPTION CODE\n$(jq -r '"\(.[] | (.hostname) + " " + (.isLeader | tostring) + " " + (.description) + " " + (.code | tostring))"' "${MESOS_LEADER_DIR}/443-exhibitor_exhibitor_v1_cluster_status.json")" | column -t
+}
+
+case ${1,,} in
+  "exhibitor")
+    case ${2,,} in
+      "status" )
+        printExhibitorStatus
+        ;;
+      "leader" )
+        printExhibitorLeader
+        ;;
+    esac
+    ;;
+esac
+
+#####
+# Mesos
+#####
+printMesosLeader () {
+  echo "Mesos Leader: ${MESOS_LEADER_HOSTNAME}"
+}
+
+printMesosFlags() {
+  jq '.flags' "${MESOS_LEADER_DIR}/5050-master_flags.json"
+}
+
 case "${1,,}" in
-  # Print Mesos leader 'hostname' (IP)
-  "leader" )
-    echo "Mesos Leader: ${MESOS_LEADER_HOSTNAME}"
+  "mesos" )
+    case "${2,,}" in
+      "leader" )
+        printMesosLeader
+        ;;
+      "flags" )
+        printMesosFlags
+        ;;
+    esac
     ;;
 esac
 
 #####
 # Cluster
 #####
+printClusterInfo () {
+  jq -r '"\("Cluster Name: " + .cluster_name + "\nDCOS Version: " + .dcos_version + "\nDCOS Security Mode: " + .security + "\nPlatform: " + .platform + "\nProvider: " + .provider + "\nDocker GC Enabled: " + .enable_docker_gc + "\nMesos GC Delay: " + .gc_delay + "\nProxy: " + .use_proxy + "\nDNS Search Domains: " + .dns_search + "\nGPU Support: " + .enable_gpu_isolation + "\nGPUs Scarce: " + .gpus_are_scarce + "\nExhibitor Backend: " + .exhibitor_storage_backend + "\nNumber of Masters: " + .num_masters + "\nMaster Discovery: " + .master_discovery + "\nMaster List: " + .master_list + "\nResolvers: " + .resolvers)"' ${MESOS_LEADER_DIR}/opt/mesosphere/etc/expanded.config.json
+}
+
 printClusterResources () {
   echo -e "AGENT_ID IP RESOURCE TOTAL UNRESERVED RESERVED USED\n$(jq -r '"\(.slaves[] | (.id) + " " + (.hostname) + " CPU "+ (.resources.cpus | tostring) + " " + (.unreserved_resources.cpus | tostring) + " " + (.resources.cpus - .unreserved_resources.cpus | tostring) + " " + (.used_resources.cpus | tostring) + "\n - - MEM "+ (.resources.mem | tostring) + " " + (.unreserved_resources.mem | tostring) + " " + (.resources.mem - .unreserved_resources.mem | tostring) + " " + (.used_resources.mem | tostring) + "\n - - DISK "+ (.resources.disk | tostring) + " " + (.unreserved_resources.disk | tostring) + " " + (.resources.disk - .unreserved_resources.disk | tostring) + " " + (.used_resources.disk | tostring) + "\n - - GPU "+ (.resources.gpus | tostring) + " " + (.unreserved_resources.gpus | tostring) + " " + (.resources.gpus - .unreserved_resources.gpus | tostring) + " " + (.used_resources.gpus | tostring))"' ${MESOS_MASTER_STATE})" | column -t
 }
@@ -173,6 +218,9 @@ case "${1,,}" in
       "resources" )
         printClusterResources
         ;;
+      "info" )
+        printClusterInfo
+        ;;
     esac
     ;;
 esac
@@ -181,7 +229,6 @@ esac
 # Framework
 # TODO:
 #     - Fix framework summary function
-#     - Fix framework <id> agents function
 #####
 printFrameworkList () {
   # echo "RUNNING COMMAND: echo -e \"ID NAME\n\$(jq -r '.frameworks[] | \"\(.id + \" \" + .name)\"' "${MESOS_MASTER_STATE}" | sort -k 2)\" | column -t"
