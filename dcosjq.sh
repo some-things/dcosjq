@@ -7,10 +7,13 @@ set -o pipefail
 ########################
 # - Rewrite and add functions as needed for if a bundle is complete or if we are only limited to certain state files.
 # - It likely makes sense to add a flag to show the transitions of each task... we should also look into failed/lost/etc. tasks
+# - Re-review all bundle files for ideas
 ########################
 # - Add fix so that this can be run from any dir within a bundle (Make sure to remove the associated section from 'pre-flight checks' when implementing this...)
 # - Rewrite things so we don't need to have exits for stuff ran before the master dir checks...
 # - Add var for MESOS_MASTER_STATE...
+#########################
+# Show all jq paths: jq -c 'path(..)|[.[]|tostring]|join("/")' FILE
 #########################
 # Random snippets...:
 # jq -r '.leader_info.hostname' */5050-master_state.json
@@ -291,9 +294,18 @@ esac
 
 #####
 # Marathon
+# Ask team if they would prefer different positional arguments. E.g., DC/OS CLI uses dcos marathon app show [--app-version=<app-version>] <app-id>
+# TODO:
+# - Queue
+# - Pull info from 8080/8443-metrics.json? e.g., errors
 #####
+
 printMarathonLeader () {
   jq -r '"Marathon Leader: \(.leader)"' "${MESOS_LEADER_DIR}/8"*"-v2_leader.json"
+}
+
+printMarathonInfo () {
+  jq '.' "${MESOS_LEADER_DIR}/8"*"-v2_info.json"
 }
 
 printMarathonAppList () {
@@ -304,6 +316,24 @@ printMarathonAppShow () {
   jq '.apps[] | select(.id == "'"${APP_ID}"'")' "${MESOS_LEADER_DIR}/8"*"-v2_apps.json"
 }
 
+# This could be filtered much better (e.g., for app first)
+printMarathonDeploymentList () {
+  echo -e "ID VERSION\n$(jq -r '"\(.[] | (.id) + " " + (.version))"' "${MESOS_LEADER_DIR}/8"*"-v2_deployments.json")" | column -t
+}
+
+printMarathonDeploymentSummary () {
+  jq '.[] | select(.id == "'"${DEPLOYMENT_ID}"'")' "${MESOS_LEADER_DIR}/8"*"-v2_deployments.json"
+}
+
+# Though this will likely not be used much, we should get also get sub-groups eventually...
+printMarathonGroupList () {
+  echo -e "ID VERSION\n$(jq -r '"\(.groups[] | (.id) + " " + (.version))"' "${MESOS_LEADER_DIR}/8"*"-v2_groups.json")" | column -t
+}
+
+printMarathonGroupSummary () {
+  jq '.groups[] | select(.id == "'"${GROUP_ID}"'")' "${MESOS_LEADER_DIR}/8"*"-v2_groups.json"
+}
+
 printMarathonPodList () {
   echo -e "ID VERSION\n$(jq -r '"\(.[] | (.id) + " " + (.version))"' "${MESOS_LEADER_DIR}/8"*"-v2_pods.json")" | column -t
 }
@@ -312,11 +342,22 @@ printMarathonPodShow () {
   jq '.[] | select(.id == "'"${POD_ID}"'")' "${MESOS_LEADER_DIR}/8"*"-v2_pods.json"
 }
 
+printMarathonTaskList () {
+  echo -e "ID STATE STARTED$(jq -r '"\(.tasks[] | (.id) + " " + (.state) + " " + (.startedAt))"' "${MESOS_LEADER_DIR}/8"*"-v2_tasks.json" | sort -k 1)" | column -t
+}
+
+printMarathonTaskSummary () {
+  jq '.tasks[] | select(.id == "'"${TASK_ID}"'")' "${MESOS_LEADER_DIR}/8"*"-v2_tasks.json"
+}
+
 case "${1,,}" in
   "marathon" )
     case "${2,,}" in
       "leader" )
         printMarathonLeader
+        ;;
+      "info" )
+        printMarathonInfo
         ;;
       "app" )
         case "${3}" in
@@ -333,6 +374,28 @@ case "${1,,}" in
             ;;
         esac
         ;;
+      "deployment" )
+        case "${3}" in
+          "list" )
+            printMarathonDeploymentList
+            ;;
+          "$(jq -r '"\(.[] | select(.id == "'"${3}"'") | .id)"' "${MESOS_LEADER_DIR}/8"*"-v2_deployments.json")" )
+            DEPLOYMENT_ID=$3
+            printMarathonDeploymentSummary
+            ;;
+        esac
+        ;;
+      "group" )
+        case "${3}" in
+          "list" )
+            printMarathonGroupList
+            ;;
+          "$(jq -r '"\(.groups[] | select(.id == "'"${3}"'") | (.id | tostring))"' "${MESOS_LEADER_DIR}/8"*"-v2_groups.json")" )
+            GROUP_ID=$3
+            printMarathonGroupSummary
+            ;;
+        esac
+        ;;
       "pod" )
         case "${3}" in
           "list" )
@@ -345,6 +408,17 @@ case "${1,,}" in
                 printMarathonPodShow
                 ;;
             esac
+            ;;
+        esac
+        ;;
+      "task" )
+        case "${3}" in
+          "list" )
+            printMarathonTaskList
+            ;;
+          "$(jq -r '"\(.tasks[] | select(.id == "'"${3}"'") | (.id))"' "${MESOS_LEADER_DIR}/8"*"-v2_tasks.json")" )
+            TASK_ID=$3
+            printMarathonTaskSummary
             ;;
         esac
         ;;
