@@ -14,6 +14,7 @@ set -o pipefail
 # - Add var for MESOS_MASTER_STATE...
 #########################
 # Show all jq paths: jq -c 'path(..)|[.[]|tostring]|join("/")' FILE
+# Cleaner version: jq '[path(..)|map(if type=="number" then "[]" else tostring end)|join(".")|split(".[]")|join("[]")]|unique|map("."+.)|.[]' FILE
 #########################
 # Random snippets...:
 # jq -r '.leader_info.hostname' */5050-master_state.json
@@ -143,11 +144,11 @@ done
 # Exhibitor
 #####
 printExhibitorLeader () {
-  jq -r '"Exhibitor Leader: \(.[] | select(.isLeader == true) | .hostname)"' "${MESOS_LEADER_DIR}/443-exhibitor_exhibitor_v1_cluster_status.json"
+  jq -r '"Exhibitor Leader: \(.[] | select(.isLeader == true) | .hostname)"' "${MESOS_LEADER_DIR}/"*"-exhibitor_exhibitor_v1_cluster_status.json"
 }
 
 printExhibitorStatus () {
-  echo -e "HOSTNAME LEADER DESCRIPTION CODE\n$(jq -r '"\(.[] | (.hostname) + " " + (.isLeader | tostring) + " " + (.description) + " " + (.code | tostring))"' "${MESOS_LEADER_DIR}/443-exhibitor_exhibitor_v1_cluster_status.json")" | column -t
+  echo -e "HOSTNAME LEADER DESCRIPTION CODE\n$(jq -r '"\(.[] | (.hostname) + " " + (.isLeader | tostring) + " " + (.description) + " " + (.code | tostring))"' "${MESOS_LEADER_DIR}/"*"-exhibitor_exhibitor_v1_cluster_status.json")" | column -t
 }
 
 case ${1,,} in
@@ -235,6 +236,10 @@ printFrameworkIDTasks () {
   echo -e "ID CURRENT_STATE STATES TIMESTAMP SLAVE_ID\n$(jq -r '"\(.frameworks[].tasks[] | select(.framework_id == "'"${FRAMEWORK_ID}"'") | (.id) + " " + (.state) + " " + (.statuses[] | (.state) + " " + (.timestamp | todate)) + " " + (.slave_id))"' "${MESOS_MASTER_STATE}" | sort -k 1)" | column -t
 }
 
+printFrameworkIDTaskIDSummary () {
+  jq '.frameworks[].tasks[] | select(.framework_id == "'"${FRAMEWORK_ID}"'") | select(.id == "'"${FRAMEWORK_TASK_ID}"'")' "${MESOS_MASTER_STATE}"
+}
+
 printFrameworkIDRoles () {
   echo -e "ROLE_NAME\n$(jq -r '"\(.frameworks[] | select(.id == "'"${FRAMEWORK_ID}"'") | (.role) + "\n" + (.tasks[].role))"' "${MESOS_MASTER_STATE}" | sort -u)" | column -t
 }
@@ -271,8 +276,21 @@ case "${1,,}" in
             printFrameworkIDAgents
             ;;
           "tasks" )
-            # Framework <id> tasks
-            printFrameworkIDTasks
+            FRAMEWORK_TASK_ID=$4
+            case "${4}" in
+              "" )
+                # Framework <id> tasks
+                printFrameworkIDTasks
+                ;;
+              "$(jq -r '"\(.frameworks[].tasks[] | select(.framework_id == "'"${FRAMEWORK_ID}"'") | select(.id == "'"${FRAMEWORK_TASK_ID}"'").id)"' "${MESOS_MASTER_STATE}")" )
+                # Framework <id> tasks <id>
+                printFrameworkIDTaskIDSummary
+                ;;
+              * )
+                # Framework <id> tasks
+                printFrameworkIDTasks
+                ;;
+            esac
             ;;
           "roles" )
             # Framework <id> roles
@@ -429,7 +447,28 @@ esac
 #####
 # Task
 #####
+printTaskList () {
+  echo -e "ID FRAMEWORK_ID SLAVE_ID STATE\n$(jq -r '"\(.tasks[] | (.id) + " " + (.framework_id) + " " + (.slave_id) + " " + (.state))"' "${MESOS_LEADER_DIR}/5050-master_tasks.json")" | column -t
+}
 
+printTaskSummary () {
+  echo
+}
+
+case "${1,,}" in
+  "task" )
+    case "${2}" in
+      "" )
+        # Task command usage
+        printTaskCommandUsage
+        ;;
+      "list" )
+        # Task list
+        printTaskList
+        ;;
+    esac
+    ;;
+esac
 
 #####
 # Agent
