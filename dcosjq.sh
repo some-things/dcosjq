@@ -3,33 +3,6 @@
 set -o pipefail
 # set -o nounset -- Need to fix things up before we set this
 
-# TODO:
-########################
-# - Rewrite and add functions as needed for if a bundle is complete or if we are only limited to certain state files.
-# - It likely makes sense to add a flag to show the transitions of each task... we should also look into failed/lost/etc. tasks
-# - Re-review all bundle files for ideas
-########################
-# - Add fix so that this can be run from any dir within a bundle (Make sure to remove the associated section from 'pre-flight checks' when implementing this...)
-# - Rewrite things so we don't need to have exits for stuff ran before the master dir checks...
-# - Add var for MESOS_MASTER_STATE...
-#########################
-# Show all jq paths: jq -c 'path(..)|[.[]|tostring]|join("/")' FILE
-# Cleaner version: jq '[path(..)|map(if type=="number" then "[]" else tostring end)|join(".")|split(".[]")|join("[]")]|unique|map("."+.)|.[]' FILE
-#########################
-# Random snippets...:
-# jq -r '.leader_info.hostname' */5050-master_state.json
-# jq -r '.activated_slaves' */5050-master_state.json
-# jq -r '.deactivated_slaves' */5050-master_state.json
-# jq -r '.unreachable_slaves' */5050-master_state.json
-# .cluster
-# .flags
-# .version
-# .slaves[]
-# .frameworks[]
-# jq -r '.frameworks[].tasks[].role' 5050-master_state.json | uniq <-- doesn't show * :()
-# jq -r '"\(.frameworks[].unreachable_tasks[] | (.name) + " " + (.framework_id) + " " + (.slave_id) + " " + (.state) + " " + (select(.statuses[].state == .state) | .timestamp))"' 5050-master_state.json | column -t
-#########################
-
 #####
 # JQ pre-flight checks
 #####
@@ -67,15 +40,15 @@ esac
 # Extract
 #####
 # Set the full path to where you would like to have bundle and ticket files and folders created.
-BASE_DIR="${HOME}/Documents/logs/tickets"
+USER_TICKETS_DIR="${HOME}/Documents/logs/tickets"
 
-# BASE_DIR must be set to a valid path for any 'extract' commands to function properly
+# USER_TICKETS_DIR must be set to a valid path for any 'extract' commands to function properly
 extractBundle ()  {
   if [[ -n $1 ]]; then
     read -r -p "Ticket number: " TICKET_NUM
-    TICKET_DIR="${BASE_DIR}/${TICKET_NUM}"
+    TICKET_DIR="${USER_TICKETS_DIR}/${TICKET_NUM}"
     mkdir -p "${TICKET_DIR}"
-    BUNDLE_DIR="${BASE_DIR}/${TICKET_NUM}/${1%%.zip}"
+    BUNDLE_DIR="${USER_TICKETS_DIR}/${TICKET_NUM}/${1%%.zip}"
     echo "Extracting bundle to ${BUNDLE_DIR}..."
     unzip -q -d "${BUNDLE_DIR}" "${1}"
     echo "Decompressing all bundle files..."
@@ -452,7 +425,7 @@ printTaskList () {
 }
 
 printTaskSummary () {
-  echo
+  jq -r '.tasks[] | select(.id == "'"${TASK_ID}"'")' "${MESOS_LEADER_DIR}/5050-master_tasks.json"
 }
 
 case "${1,,}" in
@@ -465,6 +438,10 @@ case "${1,,}" in
       "list" )
         # Task list
         printTaskList
+        ;;
+      "$(jq -r '"\(.tasks[] | select(.id == "'"${2}"'") | .id)"' "${MESOS_LEADER_DIR}/5050-master_tasks.json")" )
+        TASK_ID=$2
+        printTaskSummary
         ;;
     esac
     ;;
@@ -496,7 +473,7 @@ printAgentTasks () {
 }
 
 # printAgentRoles () {
-#   echo "blah blah blah"
+#   Placeholder
 # }
 
 printAgentCommandUsage () {
@@ -566,7 +543,7 @@ printRoleSummary () {
 }
 
 printRoleAgents () {
-  jq '.frameworks[].tasks[] | select(.role == "'"${ROLE_NAME}"'") | .slave_id' "${MESOS_LEADER_DIR}/5050-master_frameworks.json" | sort -u
+  echo -e "SLAVE_ID\n$(jq -r '"\(.frameworks[].tasks[] | select(.role == "'"${ROLE_NAME}"'") | .slave_id)"' "${MESOS_LEADER_DIR}/5050-master_frameworks.json" | sort -u)"
 }
 
 printRoleCommandUsage () {
@@ -589,7 +566,7 @@ case "${1,,}" in
         ;;
       "$(jq -r '.roles[] | select(.name == "'"${2}"'" ) | "\(.name)"' "${MESOS_LEADER_DIR}/5050-master_roles.json")" )
         ROLE_NAME=$2
-        case "${2}" in
+        case "${3}" in
           "agents" )
             # Role <id> agents
             printRoleAgents
@@ -743,3 +720,31 @@ case "${1,,}" in
     checkErrors
     ;;
 esac
+
+
+# TODO:
+########################
+# - Rewrite and add functions as needed for if a bundle is complete or if we are only limited to certain state files.
+# - It likely makes sense to add a flag to show the transitions of each task... we should also look into failed/lost/etc. tasks
+# - Re-review all bundle files for ideas
+########################
+# - Add fix so that this can be run from any dir within a bundle (Make sure to remove the associated section from 'pre-flight checks' when implementing this...)
+# - Rewrite things so we don't need to have exits for stuff ran before the master dir checks...
+# - Add var for MESOS_MASTER_STATE...
+#########################
+# Show all jq paths: jq -c 'path(..)|[.[]|tostring]|join("/")' FILE
+# Cleaner version: jq '[path(..)|map(if type=="number" then "[]" else tostring end)|join(".")|split(".[]")|join("[]")]|unique|map("."+.)|.[]' FILE
+#########################
+# Random snippets...:
+# jq -r '.leader_info.hostname' */5050-master_state.json
+# jq -r '.activated_slaves' */5050-master_state.json
+# jq -r '.deactivated_slaves' */5050-master_state.json
+# jq -r '.unreachable_slaves' */5050-master_state.json
+# .cluster
+# .flags
+# .version
+# .slaves[]
+# .frameworks[]
+# jq -r '.frameworks[].tasks[].role' 5050-master_state.json | uniq <-- doesn't show * :()
+# jq -r '"\(.frameworks[].unreachable_tasks[] | (.name) + " " + (.framework_id) + " " + (.slave_id) + " " + (.state) + " " + (select(.statuses[].state == .state) | .timestamp))"' 5050-master_state.json | column -t
+#########################

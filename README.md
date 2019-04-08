@@ -3,7 +3,7 @@ In short, `dcosjq` is a simple command line tool for parsing files contained wit
 
 The intent of `dcosjq` is to mimic the functionality of the [DC/OS CLI](https://github.com/dcos/dcos-cli) when working with DC/OS diagnostic bundles. To accomplish this, we leverage the use of `jq`. Using `dcosjq` allows you to quickly gather information about a cluster and it's state without having to open large, and often cumbersome, JSON files.
 
-This project is currently a work-in-progress and will likely be updated regularly. Any feedback or contributions are welcomed.
+This project is currently a work-in-progress and will likely be updated regularly. Any feedback or contributions are welcome.
 ## Installation
 ```
 $ git clone git@github.com:some-things/dcosjq.git
@@ -153,7 +153,7 @@ $ dcosjq extract <bundle-name>.zip
 ```
 
 ## Contributing
-Any issues, features, or pull requests are welcomed!
+Any issues, features, or pull requests are welcome!
 
 ## Contact
 
