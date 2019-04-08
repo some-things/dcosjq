@@ -12,6 +12,7 @@ $ sudo cp dcosjq.sh /usr/local/bin/dcosjq
 $ sudo chmod +x /usr/local/bin/dcosjq
 ```
 ## Usage
+NOTE: For JSON and log parsing features, `dcosjq` must be executed from within the DC/OS diagnostic bundle's root directory with all files decompressed.
 ### Parsing JSON files:
 #### General Cluster Information:
 ```
