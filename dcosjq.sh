@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# set -o errexit -- Need to fix things up before we set this
+# set -o errexit
 set -o pipefail
-# set -o nounset -- Need to fix things up before we set this
+# set -o nounset
 
 #####
 # JQ pre-flight checks
@@ -231,11 +231,9 @@ case "${1,,}" in
     # Beware of case sensitivity here :)
     case "${2}" in
       "" )
-        # Framework command usage
         printFrameworkCommandUsage
         ;;
       "list" )
-        # Framework list
         printFrameworkList
         ;;
       "$(jq -r '"\(.frameworks[] | select(.id == "'"${2}"'") | .id)"' "${MESOS_MASTER_STATE}")" )
@@ -245,38 +243,31 @@ case "${1,,}" in
             printFrameworkIDSummary
             ;;
           "agents" )
-            # Framework <id> agents
             printFrameworkIDAgents
             ;;
           "tasks" )
             FRAMEWORK_TASK_ID=$4
             case "${4}" in
               "" )
-                # Framework <id> tasks
                 printFrameworkIDTasks
                 ;;
               "$(jq -r '"\(.frameworks[].tasks[] | select(.framework_id == "'"${FRAMEWORK_ID}"'") | select(.id == "'"${FRAMEWORK_TASK_ID}"'").id)"' "${MESOS_MASTER_STATE}")" )
-                # Framework <id> tasks <id>
                 printFrameworkIDTaskIDSummary
                 ;;
               * )
-                # Framework <id> tasks
                 printFrameworkIDTasks
                 ;;
             esac
             ;;
           "roles" )
-            # Framework <id> roles
             printFrameworkIDRoles
             ;;
           * )
-            # Framework <id> summary
             printFrameworkIDSummary
             ;;
         esac
         ;;
       * )
-        # Framework command usage
         printFrameworkCommandUsage
         ;;
     esac
@@ -432,11 +423,9 @@ case "${1,,}" in
   "task" )
     case "${2}" in
       "" )
-        # Task command usage
         printTaskCommandUsage
         ;;
       "list" )
-        # Task list
         printTaskList
         ;;
       "$(jq -r '"\(.tasks[] | select(.id == "'"${2}"'") | .id)"' "${MESOS_LEADER_DIR}/5050-master_tasks.json")" )
@@ -491,26 +480,21 @@ case "${1,,}" in
     # Beware of case sensitivity here :)
     case "${2}" in
       "" )
-        # Agent command usage
         printAgentCommandUsage
         ;;
       "list" )
-        # Agent list
         printAgentList
         ;;
       "$(jq -r '"\(.slaves[] | select(.id == "'"${2}"'") | .id)"' "${MESOS_MASTER_STATE}")" )
         AGENT_ID=$2
         case "${3,,}" in
           "resources" )
-            # Agent <id> resources
             printAgentResources
             ;;
           "frameworks" )
-            # Agent <id> frameworks
             printAgentFrameworks
             ;;
           "tasks" )
-            # Agent <id> tasks
             printAgentTasks
             ;;
           # "roles" )
@@ -518,13 +502,11 @@ case "${1,,}" in
           #   printAgentRoles
           #   ;;
           * )
-            # Agent <id> summary
             printAgentSummary
             ;;
         esac
         ;;
       * )
-        # Agent command usage
         printAgentCommandUsage
         ;;
     esac
@@ -535,7 +517,8 @@ esac
 # Role
 #####
 printRoleList () {
-  echo -e "NAME\n$(jq -r '.roles[] | "\(.name)"' "${MESOS_LEADER_DIR}/5050-master_roles.json")" | column -t
+  (echo -e "NAME"
+  jq -r '.roles[] | "\(.name)"' "${MESOS_LEADER_DIR}/5050-master_roles.json") | column -t
 }
 
 printRoleSummary () {
@@ -557,28 +540,23 @@ case "${1,,}" in
   "role" )
     case "${2}" in
       "" )
-        # Role command usage
         printRoleCommandUsage
         ;;
       "list" )
-        # Role list
         printRoleList
         ;;
       "$(jq -r '.roles[] | select(.name == "'"${2}"'" ) | "\(.name)"' "${MESOS_LEADER_DIR}/5050-master_roles.json")" )
         ROLE_NAME=$2
         case "${3}" in
           "agents" )
-            # Role <id> agents
             printRoleAgents
             ;;
           * )
-            # Role <id> summary
             printRoleSummary
             ;;
         esac
         ;;
       * )
-        # Role command usage
         printRoleCommandUsage
         ;;
     esac
@@ -600,9 +578,7 @@ checkErrors () {
   #########################
   # State Checks
   #########################
-  #####
   # DC/OS verion uniqueness check
-  #####
   DCOS_VERSIONS="$( (jq -r '"\(.node_role) \(.ip) \(.dcos_version)"' -- */dcos-diagnostics-health.json | sort -k 3; jq -r '"\(.node_role) \(.ip) \(.dcos_version)"' -- */3dt-health.json | sort -k 3) 2> /dev/null)"
   if [[ $(echo "$DCOS_VERSIONS" | awk '{print$3}' | uniq | wc -l) -gt 1 ]]; then
     echo -e "\xE2\x9D\x8C Multiple DC/OS versions detected:"
@@ -611,9 +587,7 @@ checkErrors () {
     echo -e "\xE2\x9C\x94 All nodes on the same DC/OS version: $(echo "${DCOS_VERSIONS}" | awk '{print$3}' | uniq)"
   fi
 
-  #####
   # DC/OS component healthiness check
-  #####
   FAILED_UNITS="$( (jq -r '"\(.node_role) \(.ip) \(.hostname) \(.units[] | select(.health != 0) | .id + " " + (.health | tostring))"' -- */dcos-diagnostics-health.json; jq -r '"\(.node_role) \(.ip) \(.hostname) \(.units[] | select(.health != 0) | .id + " " + (.health | tostring))"' -- */3dt-health.json) 2> /dev/null)"
   if [[ -n $FAILED_UNITS ]]; then
     echo -e "\xE2\x9D\x8C Failed DC/OS components found:"
@@ -622,9 +596,7 @@ checkErrors () {
     echo -e "\xE2\x9C\x94 All components report as healthy."
   fi
 
-  #####
   # Unreachable agent check
-  #####
   UNREACHABLE_AGENTS="$(jq -r '"\(.unreachable.slaves[] | .id.value + " " + (.timestamp.nanoseconds / 1000000000 | gmtime | todate | tostring))"' "${MESOS_LEADER_DIR}/5050-registrar_1__registry.json" 2> /dev/null)"
   if [[ -n $UNREACHABLE_AGENTS ]]; then
     echo -e "\xE2\x9D\x8C Unreachable agents found:"
@@ -639,9 +611,7 @@ checkErrors () {
   # - Port current checks from bun and implement from issues
   # - Check iptables for DC/OS ports
   #########################
-  #####
   # Zookeeper fsync event check
-  #####
   ZOOKEEPER_FSYNC_EVENTS="$(grep -i 'fsync-ing the write ahead log in' -- */dcos-exhibitor.service* 2> /dev/null)"
   if [[ -n $ZOOKEEPER_FSYNC_EVENTS ]]; then
     echo -e "\xE2\x9D\x8C Zookeeper fsync events detected (See root cause and recommendations section within https://jira.mesosphere.com/browse/COPS-4403 if times are excessive):"
@@ -650,9 +620,7 @@ checkErrors () {
     echo -e "\xE2\x9C\x94 No Zookeeper fsync events."
   fi
 
-  #####
   # Zookeeper all nodes available on startup check
-  #####
   ZOOKEEPER_START_QUORUM_FAILURES="$(grep -i "Exception: Expected.*servers and.*leader, got.*servers and.*leaders" -- */dcos-exhibitor.service* 2> /dev/null | wc -l)"
   if [[ $ZOOKEEPER_START_QUORUM_FAILURES -gt 0 ]]; then
     echo -e "\xE2\x9D\x8C Zookeeper failed to start ${ZOOKEEPER_START_QUORUM_FAILURES} times due to a missing node. Zookeeper requires that all masters are available before it will start."
@@ -660,9 +628,7 @@ checkErrors () {
     echo -e "\xE2\x9C\x94 No Zookeeper start up failures due to a missing node."
   fi
 
-  #####
   # Zookeeper disk full error check
-  #####
   ZOOKEEPER_DISK_FULL_ERRORS="$(grep -i "No space left on device" -- */dcos-exhibitor.service* 2> /dev/null | wc -l)"
   if [[ $ZOOKEEPER_DISK_FULL_ERRORS -gt 0 ]]; then
     echo -e "\xE2\x9D\x8C Zookeeper logs indicate that the disk is full and has thrown an error ${ZOOKEEPER_DISK_FULL_ERRORS} times. Please check that there is sufficient free space on the disk."
@@ -670,9 +636,7 @@ checkErrors () {
     echo -e "\xE2\x9C\x94 No Zookeeper disk full errors."
   fi
 
-  #####
   # CockroachDB time sync check
-  #####
   COCKROACHDB_TIME_SYNC_EVENTS="$(grep -i "fewer than half the known nodes are within the maximum offset" -- */dcos-cockroach.service* 2> /dev/null | awk 'BEGIN {FS="/"}; {print$1}' | sort -k 2 | uniq -c)"
   if [[ -n $COCKROACHDB_TIME_SYNC_EVENTS ]]; then
     echo -e "\xE2\x9D\x8C CockroachDB logs indicate that there is/was an issue with time sync. Please ensure that time is in sync and CockroachDB is healthy on all Masters."
@@ -681,10 +645,8 @@ checkErrors () {
     echo -e "\xE2\x9C\x94 No CockroachDB time sync events."
   fi
 
-  #####
   # Private registry certificate error check
-  #####
-  # Check with the team if we want to add */dcos-marathon.service here
+  # - Check with the team if we want to add */dcos-marathon.service here
   REGISTRY_CERTIFICATE_ERRORS="$(grep -i "Container.*Failed to perform \'curl\': curl: (60) SSL certificate problem: self signed certificate" -- */dcos-mesos-slave.service* 2> /dev/null | wc -l | awk '{print$1}')"
   if [[ $REGISTRY_CERTIFICATE_ERRORS -gt 0 ]]; then
     echo -e "\xE2\x9D\x8C Detected ${REGISTRY_CERTIFICATE_ERRORS} registry certificate errors. Please see https://jira.mesosphere.com/browse/COPS-2315 and https://jira.mesosphere.com/browse/COPS-2106 for more information."
@@ -692,9 +654,7 @@ checkErrors () {
     echo -e "\xE2\x9C\x94 No private registry certificate errors found."
   fi
 
-  #####
   # KMEM event check
-  #####
   KMEM_EVENTS_PER_NODE="$(grep -Ri 'SLUB: Unable to allocate memory on node -1' -- */dmesg* 2> /dev/null | awk 'BEGIN {FS="/"}; {print$1}' | sort -k 2 | uniq -c)"
   if [[ -n $KMEM_EVENTS_PER_NODE ]]; then
     echo -e "\xE2\x9D\x8C Detected kmem events (please see advisories: https://support.mesosphere.com/s/article/Critical-Issue-KMEM-MSPH-2018-0006 and https://support.mesosphere.com/s/article/Known-Issue-KMEM-with-Kubernetes-MSPH-2019-0002) on the following nodes:"
@@ -703,9 +663,7 @@ checkErrors () {
     echo -e "\xE2\x9C\x94 No KMEM related events found."
   fi
 
-  #####
   # OOM event check
-  #####
   OOM_EVENTS_PER_NODE="$(grep -Ri 'invoked oom-killer' -- */dmesg* 2> /dev/null | awk 'BEGIN {FS="/"}; {print$1}' | sort | uniq -c)"
   if [[ -n $OOM_EVENTS_PER_NODE ]]; then
     echo -e "\xE2\x9D\x8C Detected out of memory events on the following nodes:"
@@ -720,31 +678,3 @@ case "${1,,}" in
     checkErrors
     ;;
 esac
-
-
-# TODO:
-########################
-# - Rewrite and add functions as needed for if a bundle is complete or if we are only limited to certain state files.
-# - It likely makes sense to add a flag to show the transitions of each task... we should also look into failed/lost/etc. tasks
-# - Re-review all bundle files for ideas
-########################
-# - Add fix so that this can be run from any dir within a bundle (Make sure to remove the associated section from 'pre-flight checks' when implementing this...)
-# - Rewrite things so we don't need to have exits for stuff ran before the master dir checks...
-# - Add var for MESOS_MASTER_STATE...
-#########################
-# Show all jq paths: jq -c 'path(..)|[.[]|tostring]|join("/")' FILE
-# Cleaner version: jq '[path(..)|map(if type=="number" then "[]" else tostring end)|join(".")|split(".[]")|join("[]")]|unique|map("."+.)|.[]' FILE
-#########################
-# Random snippets...:
-# jq -r '.leader_info.hostname' */5050-master_state.json
-# jq -r '.activated_slaves' */5050-master_state.json
-# jq -r '.deactivated_slaves' */5050-master_state.json
-# jq -r '.unreachable_slaves' */5050-master_state.json
-# .cluster
-# .flags
-# .version
-# .slaves[]
-# .frameworks[]
-# jq -r '.frameworks[].tasks[].role' 5050-master_state.json | uniq <-- doesn't show * :()
-# jq -r '"\(.frameworks[].unreachable_tasks[] | (.name) + " " + (.framework_id) + " " + (.slave_id) + " " + (.state) + " " + (select(.statuses[].state == .state) | .timestamp))"' 5050-master_state.json | column -t
-#########################
