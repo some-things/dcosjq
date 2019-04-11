@@ -1,7 +1,7 @@
 ## What is dcosjq?
 In short, `dcosjq` is a simple command line tool for parsing files contained within [DC/OS diagnostic bundles](https://support.mesosphere.com/s/article/Create-a-DC-OS-Diagnostic-bundle).
 
-The intent of `dcosjq` is to mimic the functionality of the [DC/OS CLI](https://github.com/dcos/dcos-cli) when working with DC/OS diagnostic bundles. To accomplish this, we leverage the use of `jq`. Using `dcosjq` allows you to quickly gather information about a cluster and it's state without having to open large, and often cumbersome, JSON files.
+The intent of `dcosjq` is to mimic the functionality of the [DC/OS CLI](https://github.com/dcos/dcos-cli) when working with DC/OS diagnostic bundles and parse the information in the bundles more effective and efficiently. To accomplish this, we leverage the use of `jq`. Using `dcosjq` allows you to quickly gather information about a cluster and its state without having to open large, and often cumbersome, JSON files.
 
 This project is currently a work-in-progress and will likely be updated regularly. Any feedback or contributions are welcome.
 ## Installation
@@ -12,7 +12,7 @@ $ sudo cp dcosjq.sh /usr/local/bin/dcosjq
 $ sudo chmod +x /usr/local/bin/dcosjq
 ```
 ## Usage
-NOTE: For JSON and log parsing features, `dcosjq` must be executed from within the DC/OS diagnostic bundle's root directory with all files decompressed.
+Note: For JSON and log parsing features, `dcosjq` must be executed from within the DC/OS diagnostic bundles root directory with all files decompressed.
 ### Parsing JSON files:
 #### General Cluster Information:
 ```
