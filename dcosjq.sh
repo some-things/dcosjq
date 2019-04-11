@@ -56,7 +56,7 @@ extractBundle ()  {
     JSON_FILES="$(find "${BUNDLE_DIR}" -type f -name '*.json')"
     JSON_DIR="${BUNDLE_DIR}"
     formatJSON
-    # Move the compressed log bundle to the 'storage' directory; Comment the next 2 lines out to not move the original file.
+    # Move the compressed log bundle to the 'storage' directory; Comment the next 3 lines out to not move the original file.
     mkdir -p "${TICKET_DIR}/storage"
     echo "Moving original bundle file to ${TICKET_DIR}/storage/${1}"
     mv "${1}" "${TICKET_DIR}/storage/${1}"
@@ -121,7 +121,8 @@ printExhibitorLeader () {
 }
 
 printExhibitorStatus () {
-  echo -e "HOSTNAME LEADER DESCRIPTION CODE\n$(jq -r '"\(.[] | (.hostname) + " " + (.isLeader | tostring) + " " + (.description) + " " + (.code | tostring))"' "${MESOS_LEADER_DIR}/"*"-exhibitor_exhibitor_v1_cluster_status.json")" | column -t
+  (echo -e "HOSTNAME LEADER DESCRIPTION CODE"
+  jq -r '"\(.[] | (.hostname) + " " + (.isLeader | tostring) + " " + (.description) + " " + (.code | tostring))"' "${MESOS_LEADER_DIR}/"*"-exhibitor_exhibitor_v1_cluster_status.json") | column -t
 }
 
 case ${1,,} in
@@ -169,7 +170,8 @@ printClusterInfo () {
 }
 
 printClusterResources () {
-  echo -e "AGENT_ID IP RESOURCE TOTAL UNRESERVED RESERVED USED\n$(jq -r '"\(.slaves[] | (.id) + " " + (.hostname) + " CPU "+ (.resources.cpus | tostring) + " " + (.unreserved_resources.cpus | tostring) + " " + (.resources.cpus - .unreserved_resources.cpus | tostring) + " " + (.used_resources.cpus | tostring) + "\n - - MEM "+ (.resources.mem | tostring) + " " + (.unreserved_resources.mem | tostring) + " " + (.resources.mem - .unreserved_resources.mem | tostring) + " " + (.used_resources.mem | tostring) + "\n - - DISK "+ (.resources.disk | tostring) + " " + (.unreserved_resources.disk | tostring) + " " + (.resources.disk - .unreserved_resources.disk | tostring) + " " + (.used_resources.disk | tostring) + "\n - - GPU "+ (.resources.gpus | tostring) + " " + (.unreserved_resources.gpus | tostring) + " " + (.resources.gpus - .unreserved_resources.gpus | tostring) + " " + (.used_resources.gpus | tostring))"' "${MESOS_MASTER_STATE}")" | column -t
+  (echo -e "AGENT_ID IP RESOURCE TOTAL UNRESERVED RESERVED USED"
+  jq -r '"\(.slaves[] | (.id) + " " + (.hostname) + " CPU "+ (.resources.cpus | tostring) + " " + (.unreserved_resources.cpus | tostring) + " " + (.resources.cpus - .unreserved_resources.cpus | tostring) + " " + (.used_resources.cpus | tostring) + "\n - - MEM "+ (.resources.mem | tostring) + " " + (.unreserved_resources.mem | tostring) + " " + (.resources.mem - .unreserved_resources.mem | tostring) + " " + (.used_resources.mem | tostring) + "\n - - DISK "+ (.resources.disk | tostring) + " " + (.unreserved_resources.disk | tostring) + " " + (.resources.disk - .unreserved_resources.disk | tostring) + " " + (.used_resources.disk | tostring) + "\n - - GPU "+ (.resources.gpus | tostring) + " " + (.unreserved_resources.gpus | tostring) + " " + (.resources.gpus - .unreserved_resources.gpus | tostring) + " " + (.used_resources.gpus | tostring))"' "${MESOS_MASTER_STATE}") | column -t
 }
 
 case "${1,,}" in
@@ -192,7 +194,8 @@ esac
 #####
 printFrameworkList () {
   # echo "RUNNING COMMAND: echo -e \"ID NAME\n\$(jq -r '.frameworks[] | \"\(.id + \" \" + .name)\"' "${MESOS_MASTER_STATE}" | sort -k 2)\" | column -t"
-  echo -e "ID NAME\n$(jq -r '.frameworks[] | "\(.id + " " + .name)"' "${MESOS_MASTER_STATE}" | sort -k 2)" | column -t
+  (echo -e "ID NAME"
+  jq -r '.frameworks[] | "\(.id + " " + .name)"' "${MESOS_MASTER_STATE}" | sort -k 2) | column -t
 }
 
 # Need to do something crafty with this... Perhaps just print similar output to the summary but more readable...
@@ -201,12 +204,13 @@ printFrameworkIDSummary () {
 }
 
 printFrameworkIDAgents () {
-  echo -e "HOSTNAME SLAVE_ID ACTIVE\n$(jq -r '(.frameworks[] | select(.id == "'"${FRAMEWORK_ID}"'").tasks[].slave_id) as $SLAVEIDS | .slaves[] | select(.id | contains($SLAVEIDS)) | "\((.hostname) + " " + (.id) + " " + (.active | tostring))"' "${MESOS_MASTER_STATE}" | sort -u)" | column -t
+  (echo -e "HOSTNAME SLAVE_ID ACTIVE"
+  jq -r '(.frameworks[] | select(.id == "'"${FRAMEWORK_ID}"'").tasks[].slave_id) as $SLAVEIDS | .slaves[] | select(.id | contains($SLAVEIDS)) | "\((.hostname) + " " + (.id) + " " + (.active | tostring))"' "${MESOS_MASTER_STATE}" | sort -u) | column -t
 }
 
 printFrameworkIDTasks () {
-  # echo -e "ID NAME CURRENT_STATE STATES TIMESTAMP SLAVE_ID\n$(jq -r '"\(.frameworks[].tasks[] | select(.framework_id == "'"${FRAMEWORK_ID}"'") | (.id) + " " +  (.name) + " " + (.state) + " " + (.statuses[] | (.state) + " " + (.timestamp | todate)) + " " + (.slave_id))"' "${MESOS_MASTER_STATE}" | sort -k 1)" | column -t
-  echo -e "ID CURRENT_STATE STATES TIMESTAMP SLAVE_ID\n$(jq -r '"\(.frameworks[].tasks[] | select(.framework_id == "'"${FRAMEWORK_ID}"'") | (.id) + " " + (.state) + " " + (.statuses[] | (.state) + " " + (.timestamp | todate)) + " " + (.slave_id))"' "${MESOS_MASTER_STATE}" | sort -k 1)" | column -t
+  (echo -e "ID CURRENT_STATE STATES TIMESTAMP SLAVE_ID"
+  jq -r '"\(.frameworks[].tasks[] | select(.framework_id == "'"${FRAMEWORK_ID}"'") | (.id) + " " + (.state) + " " + (.statuses[] | (.state) + " " + (.timestamp | todate)) + " " + (.slave_id))"' "${MESOS_MASTER_STATE}" | sort -k 1) | column -t
 }
 
 printFrameworkIDTaskIDSummary () {
@@ -214,7 +218,8 @@ printFrameworkIDTaskIDSummary () {
 }
 
 printFrameworkIDRoles () {
-  echo -e "ROLE_NAME\n$(jq -r '"\(.frameworks[] | select(.id == "'"${FRAMEWORK_ID}"'") | (.role) + "\n" + (.tasks[].role))"' "${MESOS_MASTER_STATE}" | sort -u)" | column -t
+  (echo -e "ROLE_NAME"
+  jq -r '"\(.frameworks[] | select(.id == "'"${FRAMEWORK_ID}"'") | (.role) + "\n" + (.tasks[].role))"' "${MESOS_MASTER_STATE}" | sort -u) | column -t
 }
 
 printFrameworkCommandUsage () {
@@ -276,14 +281,13 @@ esac
 
 #####
 # Marathon
-# Ask team if they would prefer different positional arguments. E.g., DC/OS CLI uses dcos marathon app show [--app-version=<app-version>] <app-id>
 # TODO:
 # - Queue
 # - Pull info from 8080/8443-metrics.json? e.g., errors
 #####
 
 printMarathonLeader () {
-  jq -r '"Marathon Leader: \(.leader)"' "${MESOS_LEADER_DIR}/8"*"-v2_leader.json"
+  jq -r '"Marathon Leader: \(.leader)"' $MESOS_LEADER_DIR/8*-v2_leader.json
 }
 
 printMarathonInfo () {
@@ -291,7 +295,8 @@ printMarathonInfo () {
 }
 
 printMarathonAppList () {
-  echo -e "ID VERSION\n$(jq -r '"\(.apps[] | (.id) + " " + (.version))"' "${MESOS_LEADER_DIR}/8"*"-v2_apps.json")" | column -t
+  (echo -e "ID VERSION"
+  jq -r '"\(.apps[] | (.id) + " " + (.version))"' "${MESOS_LEADER_DIR}/8"*"-v2_apps.json") | column -t
 }
 
 printMarathonAppShow () {
@@ -300,7 +305,8 @@ printMarathonAppShow () {
 
 # This could be filtered much better (e.g., for app first)
 printMarathonDeploymentList () {
-  echo -e "ID VERSION\n$(jq -r '"\(.[] | (.id) + " " + (.version))"' "${MESOS_LEADER_DIR}/8"*"-v2_deployments.json")" | column -t
+  (echo -e "ID VERSION"
+  jq -r '"\(.[] | (.id) + " " + (.version))"' "${MESOS_LEADER_DIR}/8"*"-v2_deployments.json") | column -t
 }
 
 printMarathonDeploymentSummary () {
@@ -309,7 +315,8 @@ printMarathonDeploymentSummary () {
 
 # Though this will likely not be used much, we should get also get sub-groups eventually...
 printMarathonGroupList () {
-  echo -e "ID VERSION\n$(jq -r '"\(.groups[] | (.id) + " " + (.version))"' "${MESOS_LEADER_DIR}/8"*"-v2_groups.json")" | column -t
+  (echo -e "ID VERSION"
+  jq -r '"\(.groups[] | (.id) + " " + (.version))"' "${MESOS_LEADER_DIR}/8"*"-v2_groups.json") | column -t
 }
 
 printMarathonGroupSummary () {
@@ -317,7 +324,8 @@ printMarathonGroupSummary () {
 }
 
 printMarathonPodList () {
-  echo -e "ID VERSION\n$(jq -r '"\(.[] | (.id) + " " + (.version))"' "${MESOS_LEADER_DIR}/8"*"-v2_pods.json")" | column -t
+  (echo -e "ID VERSION"
+  jq -r '"\(.[] | (.id) + " " + (.version))"' "${MESOS_LEADER_DIR}/8"*"-v2_pods.json") | column -t
 }
 
 printMarathonPodShow () {
@@ -325,7 +333,8 @@ printMarathonPodShow () {
 }
 
 printMarathonTaskList () {
-  echo -e "ID STATE STARTED$(jq -r '"\(.tasks[] | (.id) + " " + (.state) + " " + (.startedAt))"' "${MESOS_LEADER_DIR}/8"*"-v2_tasks.json" | sort -k 1)" | column -t
+  (echo -e "ID STATE STARTED"
+  jq -r '"\(.tasks[] | (.id) + " " + (.state) + " " + (.startedAt))"' "${MESOS_LEADER_DIR}/8"*"-v2_tasks.json" | sort -k 1) | column -t
 }
 
 printMarathonTaskSummary () {
@@ -412,7 +421,8 @@ esac
 # Task
 #####
 printTaskList () {
-  echo -e "ID FRAMEWORK_ID SLAVE_ID STATE\n$(jq -r '"\(.tasks[] | (.id) + " " + (.framework_id) + " " + (.slave_id) + " " + (.state))"' "${MESOS_LEADER_DIR}/5050-master_tasks.json")" | column -t
+  (echo -e "ID FRAMEWORK_ID SLAVE_ID STATE"
+  jq -r '"\(.tasks[] | (.id) + " " + (.framework_id) + " " + (.slave_id) + " " + (.state))"' "${MESOS_LEADER_DIR}/5050-master_tasks.json") | column -t
 }
 
 printTaskSummary () {
@@ -440,7 +450,8 @@ esac
 # Agent
 #####
 printAgentList () {
-  echo -e "ID HOSTNAME ACTIVE REGISTERED\n$(jq -r '"\(.slaves[] | (.id) + " " + (.hostname) + " " + (.active | tostring) + " " + (.registered_time | todate))"' "${MESOS_MASTER_STATE}" | sort -k 2)" | column -t
+  (echo -e "ID HOSTNAME ACTIVE REGISTERED"
+  jq -r '"\(.slaves[] | (.id) + " " + (.hostname) + " " + (.active | tostring) + " " + (.registered_time | todate))"' "${MESOS_MASTER_STATE}" | sort -k 2) | column -t
 }
 
 # Need to do something crafty with this... Perhaps just print similar output to the summary but more readable...
@@ -453,12 +464,14 @@ printAgentResources () {
 }
 
 printAgentFrameworks () {
-  echo -e "ID NAME\n$(jq -r '.frameworks[] | {id: .id, name: .name, slave_id: .tasks[].slave_id} | select(.slave_id == "'"${AGENT_ID}"'") | "\((.id) + " " + (.name))"' "${MESOS_MASTER_STATE}" | sort -u -k 2)" | column -t
+  (echo -e "ID NAME"
+  jq -r '.frameworks[] | {id: .id, name: .name, slave_id: .tasks[].slave_id} | select(.slave_id == "'"${AGENT_ID}"'") | "\((.id) + " " + (.name))"' "${MESOS_MASTER_STATE}" | sort -u -k 2) | column -t
 }
 
 # It might make sense to add framework ids in here
 printAgentTasks () {
-  echo -e "ID NAME CURRENT_STATE STATES TIMESTAMP\n$(jq -r '"\(.frameworks[].tasks[] | select(.slave_id == "'"${AGENT_ID}"'") | (.id) + " " +  (.name) + " " + (.state) + " " + (.statuses[] | (.state) + " " + (.timestamp | todate)))"' "${MESOS_MASTER_STATE}" | sort -k 1)" | column -t
+  (echo -e "ID NAME CURRENT_STATE STATES TIMESTAMP"
+  jq -r '"\(.frameworks[].tasks[] | select(.slave_id == "'"${AGENT_ID}"'") | (.id) + " " +  (.name) + " " + (.state) + " " + (.statuses[] | (.state) + " " + (.timestamp | todate)))"' "${MESOS_MASTER_STATE}" | sort -k 1) | column -t
 }
 
 # printAgentRoles () {
@@ -526,7 +539,8 @@ printRoleSummary () {
 }
 
 printRoleAgents () {
-  echo -e "SLAVE_ID\n$(jq -r '"\(.frameworks[].tasks[] | select(.role == "'"${ROLE_NAME}"'") | .slave_id)"' "${MESOS_LEADER_DIR}/5050-master_frameworks.json" | sort -u)"
+  (echo -e "SLAVE_ID"
+  jq -r '"\(.frameworks[].tasks[] | select(.role == "'"${ROLE_NAME}"'") | .slave_id)"' "${MESOS_LEADER_DIR}/5050-master_frameworks.json" | sort -u)
 }
 
 printRoleCommandUsage () {
@@ -582,7 +596,8 @@ checkErrors () {
   DCOS_VERSIONS="$( (jq -r '"\(.node_role) \(.ip) \(.dcos_version)"' -- */dcos-diagnostics-health.json | sort -k 3; jq -r '"\(.node_role) \(.ip) \(.dcos_version)"' -- */3dt-health.json | sort -k 3) 2> /dev/null)"
   if [[ $(echo "$DCOS_VERSIONS" | awk '{print$3}' | uniq | wc -l) -gt 1 ]]; then
     echo -e "\xE2\x9D\x8C Multiple DC/OS versions detected:"
-    echo -e "NODE_TYPE IP DCOS_VERSION\n$DCOS_VERSIONS" | column -t | sed 's/^/     /g'
+    (echo -e "NODE_TYPE IP DCOS_VERSION"
+    echo -e "$DCOS_VERSIONS") | column -t | sed 's/^/     /g'
   else
     echo -e "\xE2\x9C\x94 All nodes on the same DC/OS version: $(echo "${DCOS_VERSIONS}" | awk '{print$3}' | uniq)"
   fi
@@ -591,7 +606,8 @@ checkErrors () {
   FAILED_UNITS="$( (jq -r '"\(.node_role) \(.ip) \(.hostname) \(.units[] | select(.health != 0) | .id + " " + (.health | tostring))"' -- */dcos-diagnostics-health.json; jq -r '"\(.node_role) \(.ip) \(.hostname) \(.units[] | select(.health != 0) | .id + " " + (.health | tostring))"' -- */3dt-health.json) 2> /dev/null)"
   if [[ -n $FAILED_UNITS ]]; then
     echo -e "\xE2\x9D\x8C Failed DC/OS components found:"
-    echo -e "NODE_TYPE IP HOSTNAME SERVICE STATUS\n$FAILED_UNITS" | column -t | sed 's/^/     /g'
+    (echo -e "NODE_TYPE IP HOSTNAME SERVICE STATUS"
+    echo -e "$FAILED_UNITS") | column -t | sed 's/^/     /g'
   else
     echo -e "\xE2\x9C\x94 All components report as healthy."
   fi
@@ -600,7 +616,8 @@ checkErrors () {
   UNREACHABLE_AGENTS="$(jq -r '"\(.unreachable.slaves[] | .id.value + " " + (.timestamp.nanoseconds / 1000000000 | gmtime | todate | tostring))"' "${MESOS_LEADER_DIR}/5050-registrar_1__registry.json" 2> /dev/null)"
   if [[ -n $UNREACHABLE_AGENTS ]]; then
     echo -e "\xE2\x9D\x8C Unreachable agents found:"
-    echo -e "SLAVE_ID UNREACHABLE_SINCE\n$UNREACHABLE_AGENTS" | column -t | sed 's/^/     /g'
+    (echo -e "SLAVE_ID UNREACHABLE_SINCE"
+    echo -e "$UNREACHABLE_AGENTS") | column -t | sed 's/^/     /g'
   else
     echo -e "\xE2\x9C\x94 No agents listed as unreachable."
   fi
@@ -640,7 +657,8 @@ checkErrors () {
   COCKROACHDB_TIME_SYNC_EVENTS="$(grep -i "fewer than half the known nodes are within the maximum offset" -- */dcos-cockroach.service* 2> /dev/null | awk 'BEGIN {FS="/"}; {print$1}' | sort -k 2 | uniq -c)"
   if [[ -n $COCKROACHDB_TIME_SYNC_EVENTS ]]; then
     echo -e "\xE2\x9D\x8C CockroachDB logs indicate that there is/was an issue with time sync. Please ensure that time is in sync and CockroachDB is healthy on all Masters."
-    echo -e "EVENTS NODE\n$COCKROACHDB_TIME_SYNC_EVENTS" | column -t | sed 's/^/     /g'
+    (echo -e "EVENTS NODE"
+    echo -e "$COCKROACHDB_TIME_SYNC_EVENTS") | column -t | sed 's/^/     /g'
   else
     echo -e "\xE2\x9C\x94 No CockroachDB time sync events."
   fi
@@ -658,7 +676,8 @@ checkErrors () {
   KMEM_EVENTS_PER_NODE="$(grep -Ri 'SLUB: Unable to allocate memory on node -1' -- */dmesg* 2> /dev/null | awk 'BEGIN {FS="/"}; {print$1}' | sort -k 2 | uniq -c)"
   if [[ -n $KMEM_EVENTS_PER_NODE ]]; then
     echo -e "\xE2\x9D\x8C Detected kmem events (please see advisories: https://support.mesosphere.com/s/article/Critical-Issue-KMEM-MSPH-2018-0006 and https://support.mesosphere.com/s/article/Known-Issue-KMEM-with-Kubernetes-MSPH-2019-0002) on the following nodes:"
-    echo -e "EVENTS NODE\n$KMEM_EVENTS_PER_NODE" | column -t | sed 's/^/     /g'
+    (echo -e "EVENTS NODE"
+    echo -e "$KMEM_EVENTS_PER_NODE") | column -t | sed 's/^/     /g'
   else
     echo -e "\xE2\x9C\x94 No KMEM related events found."
   fi
@@ -667,7 +686,8 @@ checkErrors () {
   OOM_EVENTS_PER_NODE="$(grep -Ri 'invoked oom-killer' -- */dmesg* 2> /dev/null | awk 'BEGIN {FS="/"}; {print$1}' | sort | uniq -c)"
   if [[ -n $OOM_EVENTS_PER_NODE ]]; then
     echo -e "\xE2\x9D\x8C Detected out of memory events on the following nodes:"
-    echo -e "EVENTS NODE\n$OOM_EVENTS_PER_NODE" | column -t | sed 's/^/     /g'
+    (echo -e "EVENTS NODE"
+    echo -e "$OOM_EVENTS_PER_NODE") | column -t | sed 's/^/     /g'
   else
     echo -e "\xE2\x9C\x94 No out of memory events found."
   fi
