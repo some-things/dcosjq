@@ -193,7 +193,7 @@ esac
 #     - Fix framework summary function
 #####
 printFrameworkList () {
-  # echo "RUNNING COMMAND: echo -e \"ID NAME\n\$(jq -r '.frameworks[] | \"\(.id + \" \" + .name)\"' "${MESOS_MASTER_STATE}" | sort -k 2)\" | column -t"
+  # echo "RUNNING COMMAND: echo -e \"ID NAME\n\$(jq -r '.frameworks[] | \"\(.id + \" \" + .name)\"' ${MESOS_MASTER_STATE} | sort -k 2)\" | column -t"
   (echo -e "ID NAME"
   jq -r '.frameworks[] | "\(.id + " " + .name)"' "${MESOS_MASTER_STATE}" | sort -k 2) | column -t
 }
@@ -287,7 +287,7 @@ esac
 #####
 
 printMarathonLeader () {
-  jq -r '"Marathon Leader: \(.leader)"' $MESOS_LEADER_DIR/8*-v2_leader.json
+  jq -r '"Marathon Leader: \(.leader)"' "${MESOS_LEADER_DIR}/8"*"-v2_leader.json"
 }
 
 printMarathonInfo () {
@@ -631,10 +631,10 @@ checkErrors () {
   # Zookeeper fsync event check
   ZOOKEEPER_FSYNC_EVENTS="$(grep -i 'fsync-ing the write ahead log in' -- */dcos-exhibitor.service* 2> /dev/null)"
   if [[ -n $ZOOKEEPER_FSYNC_EVENTS ]]; then
-    echo -e "\xE2\x9D\x8C Zookeeper fsync events detected (See root cause and recommendations section within https://jira.mesosphere.com/browse/COPS-4403 if times are excessive):"
+    echo -e "\xE2\x9D\x8C Zookeeper fsync threshold exceeded events detected (See root cause and recommendations section within https://jira.mesosphere.com/browse/COPS-4403 if times are excessive):"
     echo -e "$ZOOKEEPER_FSYNC_EVENTS" | sed 's/^/     /g'
   else
-    echo -e "\xE2\x9C\x94 No Zookeeper fsync events."
+    echo -e "\xE2\x9C\x94 No Zookeeper fsync threshold exceeded events."
   fi
 
   # Zookeeper all nodes available on startup check
@@ -673,7 +673,7 @@ checkErrors () {
   fi
 
   # KMEM event check
-  KMEM_EVENTS_PER_NODE="$(grep -Ri 'SLUB: Unable to allocate memory on node -1' -- */dmesg* 2> /dev/null | awk 'BEGIN {FS="/"}; {print$1}' | sort -k 2 | uniq -c)"
+  KMEM_EVENTS_PER_NODE="$(grep -i 'SLUB: Unable to allocate memory on node -1' -- */dmesg* 2> /dev/null | awk 'BEGIN {FS="/"}; {print$1}' | sort -k 2 | uniq -c)"
   if [[ -n $KMEM_EVENTS_PER_NODE ]]; then
     echo -e "\xE2\x9D\x8C Detected kmem events (please see advisories: https://support.mesosphere.com/s/article/Critical-Issue-KMEM-MSPH-2018-0006 and https://support.mesosphere.com/s/article/Known-Issue-KMEM-with-Kubernetes-MSPH-2019-0002) on the following nodes:"
     (echo -e "EVENTS NODE"
@@ -683,7 +683,7 @@ checkErrors () {
   fi
 
   # OOM event check
-  OOM_EVENTS_PER_NODE="$(grep -Ri 'invoked oom-killer' -- */dmesg* 2> /dev/null | awk 'BEGIN {FS="/"}; {print$1}' | sort | uniq -c)"
+  OOM_EVENTS_PER_NODE="$(grep -i 'invoked oom-killer' -- */dmesg* 2> /dev/null | awk 'BEGIN {FS="/"}; {print$1}' | sort | uniq -c)"
   if [[ -n $OOM_EVENTS_PER_NODE ]]; then
     echo -e "\xE2\x9D\x8C Detected out of memory events on the following nodes:"
     (echo -e "EVENTS NODE"
