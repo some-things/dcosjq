@@ -590,7 +590,7 @@ checkErrors () {
   #########################
   echo "************************************"
   echo "****** DC/OS CLUSTER SUMMARY: ******"
-  jq -r '"\("* Cluster Name: " + .cluster_name + "\n* DCOS Version: " + .dcos_version + "\n* DCOS Security Mode: " + .security + "\n* Platform: " + .platform + "\n* Provider: " + .provider + "\n* Docker GC Enabled: " + .enable_docker_gc + "\n* Mesos GC Delay: " + .gc_delay + "\n* Proxy: " + .use_proxy + "\n* DNS Search Domains: " + .dns_search + "\n* GPU Support: " + .enable_gpu_isolation + "\n* GPUs Scarce: " + .gpus_are_scarce + "\n* Exhibitor Backend: " + .exhibitor_storage_backend + "\n* Number of Masters: " + .num_masters + "\n* Master Discovery: " + .master_discovery + "\n* Master List: " + .master_list + "\n* Resolvers: " + .resolvers)"' "${MESOS_LEADER_DIR}/opt/mesosphere/etc/expanded.config.json"
+  jq -r '"\("* Cluster Name: " + .cluster_name + "\n* DCOS Version: " + .dcos_version + "\n* DCOS Security Mode: " + .security + "\n* Platform: " + .platform + "\n* Provider: " + .provider + "\n* Docker Registry URL: " + .cluster_docker_registry_url + "\n* Docker GC Enabled: " + .enable_docker_gc + "\n* Mesos GC Delay: " + .gc_delay + "\n* Proxy: " + .use_proxy + "\n* DNS Search Domains: " + .dns_search + "\n* GPU Support: " + .enable_gpu_isolation + "\n* GPUs Scarce: " + .gpus_are_scarce + "\n* Exhibitor Backend: " + .exhibitor_storage_backend + "\n* Number of Masters: " + .num_masters + "\n* Master Discovery: " + .master_discovery + "\n* Master List: " + .master_list + "\n* Resolvers: " + .resolvers)"' "${MESOS_LEADER_DIR}/opt/mesosphere/etc/expanded.config.json"
   echo "************************************"
 
   #########################
@@ -632,6 +632,22 @@ checkErrors () {
   # - Port current checks from bun and implement from issues
   # - Check iptables for DC/OS ports
   #########################
+  # Dockerd running check
+  DOCKER_DAEMON_NOT_RUNNING="$(comm -23 <(ls -d */ | cut -d '/' -f 1) <(grep -i 'dockerd' -- */ps*aux* 2> /dev/null | sort -u | cut -d '/' -f 1))"
+  for f in */ps*aux*; do
+    if [[ -s "$f" ]]; then
+      if [[ ! -z $DOCKER_DAEMON_NOT_RUNNING ]]; then
+        echo -e "\xE2\x9D\x8C Docker daemon appears to not be running on $(echo $DOCKER_DAEMON_NOT_RUNNING | wc -l | tr -d '[:space:]') node(s). Please ensure that Docker is enabled on boot and running on the following node(s):"
+        echo -e $DOCKER_DAEMON_NOT_RUNNING | sed 's/^/     /g'
+      else
+        echo -e "\xE2\x9C\x94 No nodes missing a running Docker daemon."
+      fi
+    else
+      echo -e "\xE2\x9C\x94 Skipping Docker daemon check due to no 'ps aux' output."
+    fi
+    break
+  done
+
   # Zookeeper fsync event check
   ZOOKEEPER_FSYNC_EVENTS="$(grep -i 'fsync-ing the write ahead log in' -- */dcos-exhibitor.service* 2> /dev/null)"
   if [[ -n $ZOOKEEPER_FSYNC_EVENTS ]]; then
