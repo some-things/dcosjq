@@ -92,7 +92,7 @@ fi
 # TODO:
 # - This is all terrible and needs to be rewritten
 #####
-for i in *master*/5050-registrar_1__registry.json; do
+for i in *master*/5050*registrar*1*_registry.json; do
   if [[ -n $(jq '.master.info.hostname' "${i}" | grep -vi 'null\|\[\|\]' | cut -d '"' -f 2) ]]; then
     # Set the Mesos leader hostname
     MESOS_LEADER_HOSTNAME="$(jq '.master.info.hostname' "${i}" | grep -vi 'null\|\[\|\]' | cut -d '"' -f 2 | uniq)"
@@ -165,13 +165,17 @@ esac
 #####
 # Cluster
 #####
+# printClusterInfo () {
+#   jq -r '"\("Cluster Name: " + .cluster_name + "\nDCOS Version: " + .dcos_version + "\nDCOS Security Mode: " + .security + "\nPlatform: " + .platform + "\nProvider: " + .provider + "\nDocker GC Enabled: " + .enable_docker_gc + "\nMesos GC Delay: " + .gc_delay + "\nProxy: " + .use_proxy + "\nDNS Search Domains: " + .dns_search + "\nGPU Support: " + .enable_gpu_isolation + "\nGPUs Scarce: " + .gpus_are_scarce + "\nExhibitor Backend: " + .exhibitor_storage_backend + "\nNumber of Masters: " + .num_masters + "\nMaster Discovery: " + .master_discovery + "\nMaster List: " + .master_list + "\nResolvers: " + .resolvers)"' "${MESOS_LEADER_DIR}/opt/mesosphere/etc/expanded.config.json"
+# }
+
 printClusterInfo () {
-  jq -r '"\("Cluster Name: " + .cluster_name + "\nDCOS Version: " + .dcos_version + "\nDCOS Security Mode: " + .security + "\nPlatform: " + .platform + "\nProvider: " + .provider + "\nDocker GC Enabled: " + .enable_docker_gc + "\nMesos GC Delay: " + .gc_delay + "\nProxy: " + .use_proxy + "\nDNS Search Domains: " + .dns_search + "\nGPU Support: " + .enable_gpu_isolation + "\nGPUs Scarce: " + .gpus_are_scarce + "\nExhibitor Backend: " + .exhibitor_storage_backend + "\nNumber of Masters: " + .num_masters + "\nMaster Discovery: " + .master_discovery + "\nMaster List: " + .master_list + "\nResolvers: " + .resolvers)"' "${MESOS_LEADER_DIR}/opt/mesosphere/etc/expanded.config.json"
+  jq -r '.' "${MESOS_LEADER_DIR}/opt/mesosphere/etc/expanded.config.json"
 }
 
 printClusterResources () {
   (echo -e "AGENT_ID IP RESOURCE TOTAL UNRESERVED RESERVED USED"
-  jq -r '"\(.slaves[] | (.id) + " " + (.hostname) + " CPU "+ (.resources.cpus | tostring) + " " + (.unreserved_resources.cpus | tostring) + " " + (.resources.cpus - .unreserved_resources.cpus | tostring) + " " + (.used_resources.cpus | tostring) + "\n - - MEM "+ (.resources.mem | tostring) + " " + (.unreserved_resources.mem | tostring) + " " + (.resources.mem - .unreserved_resources.mem | tostring) + " " + (.used_resources.mem | tostring) + "\n - - DISK "+ (.resources.disk | tostring) + " " + (.unreserved_resources.disk | tostring) + " " + (.resources.disk - .unreserved_resources.disk | tostring) + " " + (.used_resources.disk | tostring) + "\n - - GPU "+ (.resources.gpus | tostring) + " " + (.unreserved_resources.gpus | tostring) + " " + (.resources.gpus - .unreserved_resources.gpus | tostring) + " " + (.used_resources.gpus | tostring))"' "${MESOS_MASTER_STATE}") | column -t
+  jq -r '"\(.slaves[] | (.id) + " " + (.hostname) + " CPU "+ (.resources.cpus | tostring) + " " + (.unreserved_resources.cpus | tostring) + " " + (.resources.cpus - .unreserved_resources.cpus | tostring | .[:5]) + " " + (.used_resources.cpus | tostring) + "\n - - MEM "+ (.resources.mem | tostring) + " " + (.unreserved_resources.mem | tostring) + " " + (.resources.mem - .unreserved_resources.mem | tostring) + " " + (.used_resources.mem | tostring) + "\n - - DISK "+ (.resources.disk | tostring) + " " + (.unreserved_resources.disk | tostring) + " " + (.resources.disk - .unreserved_resources.disk | tostring) + " " + (.used_resources.disk | tostring) + "\n - - GPU "+ (.resources.gpus | tostring) + " " + (.unreserved_resources.gpus | tostring) + " " + (.resources.gpus - .unreserved_resources.gpus | tostring) + " " + (.used_resources.gpus | tostring))"' "${MESOS_MASTER_STATE}") | column -t
 }
 
 case "${1,,}" in
@@ -193,7 +197,7 @@ esac
 #     - Fix framework summary function
 #####
 printFrameworkList () {
-  # echo "RUNNING COMMAND: echo -e \"ID NAME\n\$(jq -r '.frameworks[] | \"\(.id + \" \" + .name)\"' ${MESOS_MASTER_STATE} | sort -k 2)\" | column -t"
+  # echo "+ echo -e \"ID NAME\n\$(jq -r '.frameworks[] | \"\(.id + \" \" + .name)\"' ${MESOS_MASTER_STATE} | sort -k 2)\" | column -t"
   (echo -e "ID NAME"
   jq -r '.frameworks[] | "\(.id + " " + .name)"' "${MESOS_MASTER_STATE}" | sort -k 2) | column -t
 }
@@ -287,58 +291,58 @@ esac
 #####
 
 printMarathonLeader () {
-  jq -r '"Marathon Leader: \(.leader)"' "${MESOS_LEADER_DIR}/8"*"-v2_leader.json"
+  jq -r '"Marathon Leader: \(.leader)"' "${MESOS_LEADER_DIR}/8"*"v2_leader.json"
 }
 
 printMarathonInfo () {
-  jq '.' "${MESOS_LEADER_DIR}/8"*"-v2_info.json"
+  jq '.' "${MESOS_LEADER_DIR}/8"*"v2_info.json"
 }
 
 printMarathonAppList () {
   (echo -e "ID VERSION"
-  jq -r '"\(.apps[] | (.id) + " " + (.version))"' "${MESOS_LEADER_DIR}/8"*"-v2_apps.json") | column -t
+  jq -r '"\(.apps[] | (.id) + " " + (.version))"' "${MESOS_LEADER_DIR}/8"*"v2_apps.json") | column -t
 }
 
 printMarathonAppShow () {
-  jq '.apps[] | select(.id == "'"${APP_ID}"'")' "${MESOS_LEADER_DIR}/8"*"-v2_apps.json"
+  jq '.apps[] | select(.id == "'"${APP_ID}"'")' "${MESOS_LEADER_DIR}/8"*"v2_apps.json"
 }
 
 # This could be filtered much better (e.g., for app first)
 printMarathonDeploymentList () {
   (echo -e "ID VERSION"
-  jq -r '"\(.[] | (.id) + " " + (.version))"' "${MESOS_LEADER_DIR}/8"*"-v2_deployments.json") | column -t
+  jq -r '"\(.[] | (.id) + " " + (.version))"' "${MESOS_LEADER_DIR}/8"*"v2_deployments.json") | column -t
 }
 
 printMarathonDeploymentSummary () {
-  jq '.[] | select(.id == "'"${DEPLOYMENT_ID}"'")' "${MESOS_LEADER_DIR}/8"*"-v2_deployments.json"
+  jq '.[] | select(.id == "'"${DEPLOYMENT_ID}"'")' "${MESOS_LEADER_DIR}/8"*"v2_deployments.json"
 }
 
 # Though this will likely not be used much, we should get also get sub-groups eventually...
 printMarathonGroupList () {
   (echo -e "ID VERSION"
-  jq -r '"\(.groups[] | (.id) + " " + (.version))"' "${MESOS_LEADER_DIR}/8"*"-v2_groups.json") | column -t
+  jq -r '"\(.groups[] | (.id) + " " + (.version))"' "${MESOS_LEADER_DIR}/8"*"v2_groups.json") | column -t
 }
 
 printMarathonGroupSummary () {
-  jq '.groups[] | select(.id == "'"${GROUP_ID}"'")' "${MESOS_LEADER_DIR}/8"*"-v2_groups.json"
+  jq '.groups[] | select(.id == "'"${GROUP_ID}"'")' "${MESOS_LEADER_DIR}/8"*"v2_groups.json"
 }
 
 printMarathonPodList () {
   (echo -e "ID VERSION"
-  jq -r '"\(.[] | (.id) + " " + (.version))"' "${MESOS_LEADER_DIR}/8"*"-v2_pods.json") | column -t
+  jq -r '"\(.[] | (.id) + " " + (.version))"' "${MESOS_LEADER_DIR}/8"*"v2_pods.json") | column -t
 }
 
 printMarathonPodShow () {
-  jq '.[] | select(.id == "'"${POD_ID}"'")' "${MESOS_LEADER_DIR}/8"*"-v2_pods.json"
+  jq '.[] | select(.id == "'"${POD_ID}"'")' "${MESOS_LEADER_DIR}/8"*"v2_pods.json"
 }
 
 printMarathonTaskList () {
   (echo -e "ID STATE STARTED"
-  jq -r '"\(.tasks[] | (.id) + " " + (.state) + " " + (.startedAt))"' "${MESOS_LEADER_DIR}/8"*"-v2_tasks.json" | sort -k 1) | column -t
+  jq -r '"\(.tasks[] | (.id) + " " + (.state) + " " + (.startedAt))"' "${MESOS_LEADER_DIR}/8"*"v2_tasks.json" | sort -k 1) | column -t
 }
 
 printMarathonTaskSummary () {
-  jq '.tasks[] | select(.id == "'"${TASK_ID}"'")' "${MESOS_LEADER_DIR}/8"*"-v2_tasks.json"
+  jq '.tasks[] | select(.id == "'"${TASK_ID}"'")' "${MESOS_LEADER_DIR}/8"*"v2_tasks.json"
 }
 
 case "${1,,}" in
@@ -355,7 +359,7 @@ case "${1,,}" in
           "list" )
             printMarathonAppList
             ;;
-          "$(jq -r '"\(.apps[] | select(.id == "'"${3}"'") | .id)"' "${MESOS_LEADER_DIR}/8"*"-v2_apps.json")" )
+          "$(jq -r '"\(.apps[] | select(.id == "'"${3}"'") | .id)"' "${MESOS_LEADER_DIR}/8"*"v2_apps.json")" )
             APP_ID=$3
             case "${4}" in
               "show" )
@@ -370,7 +374,7 @@ case "${1,,}" in
           "list" )
             printMarathonDeploymentList
             ;;
-          "$(jq -r '"\(.[] | select(.id == "'"${3}"'") | .id)"' "${MESOS_LEADER_DIR}/8"*"-v2_deployments.json")" )
+          "$(jq -r '"\(.[] | select(.id == "'"${3}"'") | .id)"' "${MESOS_LEADER_DIR}/8"*"v2_deployments.json")" )
             DEPLOYMENT_ID=$3
             printMarathonDeploymentSummary
             ;;
@@ -381,7 +385,7 @@ case "${1,,}" in
           "list" )
             printMarathonGroupList
             ;;
-          "$(jq -r '"\(.groups[] | select(.id == "'"${3}"'") | (.id | tostring))"' "${MESOS_LEADER_DIR}/8"*"-v2_groups.json")" )
+          "$(jq -r '"\(.groups[] | select(.id == "'"${3}"'") | (.id | tostring))"' "${MESOS_LEADER_DIR}/8"*"v2_groups.json")" )
             GROUP_ID=$3
             printMarathonGroupSummary
             ;;
@@ -392,7 +396,7 @@ case "${1,,}" in
           "list" )
             printMarathonPodList
             ;;
-          "$(jq -r '"\(.[] | select(.id == "'"${3}"'") | .id)"' "${MESOS_LEADER_DIR}/8"*"-v2_pods.json")" )
+          "$(jq -r '"\(.[] | select(.id == "'"${3}"'") | .id)"' "${MESOS_LEADER_DIR}/8"*"v2_pods.json")" )
             POD_ID=$3
             case "${4}" in
               "show" )
@@ -407,7 +411,7 @@ case "${1,,}" in
           "list" )
             printMarathonTaskList
             ;;
-          "$(jq -r '"\(.tasks[] | select(.id == "'"${3}"'") | (.id))"' "${MESOS_LEADER_DIR}/8"*"-v2_tasks.json")" )
+          "$(jq -r '"\(.tasks[] | select(.id == "'"${3}"'") | (.id))"' "${MESOS_LEADER_DIR}/8"*"v2_tasks.json")" )
             TASK_ID=$3
             printMarathonTaskSummary
             ;;
@@ -460,7 +464,7 @@ printAgentSummary () {
 }
 
 printAgentResources () {
-  echo -e "AGENT_ID IP RESOURCE TOTAL UNRESERVED RESERVED USED\n$(jq -r '"\(.slaves[] | select(.id == "'"${AGENT_ID}"'") | (.id) + " " + (.hostname) + " CPU "+ (.resources.cpus | tostring) + " " + (.unreserved_resources.cpus | tostring) + " " + (.resources.cpus - .unreserved_resources.cpus | tostring) + " " + (.used_resources.cpus | tostring) + "\n - - MEM "+ (.resources.mem | tostring) + " " + (.unreserved_resources.mem | tostring) + " " + (.resources.mem - .unreserved_resources.mem | tostring) + " " + (.used_resources.mem | tostring) + "\n - - DISK "+ (.resources.disk | tostring) + " " + (.unreserved_resources.disk | tostring) + " " + (.resources.disk - .unreserved_resources.disk | tostring) + " " + (.used_resources.disk | tostring) + "\n - - GPU "+ (.resources.gpus | tostring) + " " + (.unreserved_resources.gpus | tostring) + " " + (.resources.gpus - .unreserved_resources.gpus | tostring) + " " + (.used_resources.gpus | tostring))"' "${MESOS_MASTER_STATE}")" | column -t
+  echo -e "AGENT_ID IP RESOURCE TOTAL UNRESERVED RESERVED USED\n$(jq -r '"\(.slaves[] | select(.id == "'"${AGENT_ID}"'") | (.id) + " " + (.hostname) + " CPU "+ (.resources.cpus | tostring) + " " + (.unreserved_resources.cpus | tostring) + " " + (.resources.cpus - .unreserved_resources.cpus | tostring | .[:5]) + " " + (.used_resources.cpus | tostring) + "\n - - MEM "+ (.resources.mem | tostring) + " " + (.unreserved_resources.mem | tostring) + " " + (.resources.mem - .unreserved_resources.mem | tostring) + " " + (.used_resources.mem | tostring) + "\n - - DISK "+ (.resources.disk | tostring) + " " + (.unreserved_resources.disk | tostring) + " " + (.resources.disk - .unreserved_resources.disk | tostring) + " " + (.used_resources.disk | tostring) + "\n - - GPU "+ (.resources.gpus | tostring) + " " + (.unreserved_resources.gpus | tostring) + " " + (.resources.gpus - .unreserved_resources.gpus | tostring) + " " + (.used_resources.gpus | tostring))"' "${MESOS_MASTER_STATE}")" | column -t
 }
 
 printAgentFrameworks () {
