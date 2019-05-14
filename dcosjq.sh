@@ -583,6 +583,8 @@ esac
 
 #####
 # Checks
+# \xE2\x9D\x8C - ISSUE
+# \xE2\x9C\x94 - OK
 #####
 checkErrors () {
   #########################
@@ -633,7 +635,7 @@ checkErrors () {
   # - Check iptables for DC/OS ports
   #########################
   # Dockerd running check
-  DOCKER_DAEMON_NOT_RUNNING="$(comm -23 <(ls -d */ | cut -d '/' -f 1) <(grep -i 'dockerd' -- */ps*aux* 2> /dev/null | sort -u | cut -d '/' -f 1))"
+  DOCKER_DAEMON_NOT_RUNNING="$(comm -23 <(ls -d */*ps*aux* | cut -d '/' -f 1) <(grep -i 'dockerd' -- */ps*aux* 2> /dev/null | sort -u | cut -d '/' -f 1))"
   for f in */ps*aux*; do
     if [[ -s "$f" ]]; then
       if [[ ! -z $DOCKER_DAEMON_NOT_RUNNING ]]; then
