@@ -605,7 +605,7 @@ checkErrors () {
     (echo -e "NODE_TYPE IP DCOS_VERSION"
     echo -e "$DCOS_VERSIONS") | column -t | sed 's/^/     /g'
   else
-    echo -e "\xE2\x9C\x94 All nodes on the same DC/OS version: $(echo "${DCOS_VERSIONS}" | awk '{print$3}' | uniq)"
+    echo -e "\xE2\x9C\x94 No DC/OS version mismatches: $(echo "${DCOS_VERSIONS}" | awk '{print$3}' | uniq)"
   fi
 
   # DC/OS component healthiness check
@@ -615,7 +615,7 @@ checkErrors () {
     (echo -e "NODE_TYPE IP HOSTNAME SERVICE STATUS"
     echo -e "$FAILED_UNITS") | column -t | sed 's/^/     /g'
   else
-    echo -e "\xE2\x9C\x94 All components report as healthy."
+    echo -e "\xE2\x9C\x94 No DC/OS components reporting as unhealthy."
   fi
 
   # Unreachable agent check
@@ -626,6 +626,26 @@ checkErrors () {
     echo -e "$UNREACHABLE_AGENTS") | column -t | sed 's/^/     /g'
   else
     echo -e "\xE2\x9C\x94 No agents listed as unreachable."
+  fi
+
+  # Multiple native Marathon instance check
+  NATIVE_MARATHON_LIST="$(jq -r '"\(.frameworks[] | select(.name == "marathon") | select(.webui_url? != null) | (.name) + " " + (.id) + " " + (.active | tostring) + " " + (.webui_url))"' $MESOS_MASTER_STATE)"
+  if [[ $(echo "${NATIVE_MARATHON_LIST}" | wc -l) -gt 1 ]]; then
+    echo -e "\xE2\x9D\x8C Multiple native Marathon frameworks with webui_url found:"
+    (echo -e "NAME ID ACTIVE WEBUI_URL"
+    echo -e "${NATIVE_MARATHON_LIST}") | column -t | sed 's/^/     /g'
+  else
+    echo -e "\xE2\x9C\x94 No multiple native Marathon frameworks with webui_url found."
+  fi
+
+  # Inactive framework check
+  INACTIVE_FRAMEWORK_LIST="$(jq -r '"\(.frameworks[] | select(.active? == false) | (.name) + " " + (.id) + " " + (.active | tostring))"' $MESOS_MASTER_STATE)"
+  if [[ -n $INACTIVE_FRAMEWORK_LIST ]]; then
+    echo -e "\xE2\x9D\x8C Inactive frameworks found:"
+    (echo -e "NAME ID ACTIVE"
+    echo -e "${INACTIVE_FRAMEWORK_LIST}") | column -t | sed 's/^/     /g'
+  else
+    echo -e "\xE2\x9C\x94 No inactive frameworks found."
   fi
 
   #########################
