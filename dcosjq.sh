@@ -648,11 +648,18 @@ checkErrors () {
     echo -e "\xE2\x9C\x94 No inactive frameworks found."
   fi
 
+  # State size check
+  MESOS_STATE_SIZE_LIST="$(find . -type f \( -iname "*master_state*" ! -iname "*overlay*" ! -iname "*summary*" \) -exec du -k {} \; | awk '{print$1}' | sort -u)"
+  for i in $MESOS_STATE_SIZE_LIST; do
+    if [[ $i -ge 5000 ]]; then
+      echo -e "\xE2\x9D\x8C The Mesos state file is currently $(echo "scale=2; $i/1000" | bc -l) MB. State files larger than 5 MB can cause issues with the DC/OS UI. Please see the following link for more information and steps to reduce the size: https://mesosphere-community.force.com/s/article/Reducing-state-json-size"
+    elif [[ $i -lt 5000 ]]; then
+      echo -e "\xE2\x9C\x94 No Mesos state file larger than 5 MB (current $(echo "scale=2; $i/1000" | bc -l))"
+    fi
+  done
+
   #########################
-  # Log Checks (tail logs from last service started message to rule out false positives, or otherwise, from the beginning)
-  # Ideas:
-  # - Port current checks from bun and implement from issues
-  # - Check iptables for DC/OS ports
+  # Log Checks
   #########################
   # Dockerd running check
   DOCKER_DAEMON_NOT_RUNNING="$(comm -23 <(ls -d -- */*ps*aux* 2> /dev/null | cut -d '/' -f 1) <(grep -i 'dockerd' -- */ps*aux* 2> /dev/null | sort -u | cut -d '/' -f 1))"
