@@ -9,7 +9,7 @@ set -o pipefail
 # Check for jq
 if [[ -z $(command -v jq) ]]; then
   echo "ERROR: 'jq' not found. Please install jq and add it to your PATH to continue."
-  exit
+  exit 1
 fi
 
 #####
@@ -32,7 +32,7 @@ case "${1,,}" in
     JSON_FILES="$(find . -type f -name '*.json')"
     JSON_DIR="$(pwd)"
     formatJSON
-    exit
+    exit 0
     ;;
 esac
 
@@ -64,7 +64,7 @@ extractBundle ()  {
   else
     echo "Please specify a compressed DC/OS diagnostic bundle file to extract."
   fi
-  exit
+  exit 0
 }
 
 case ${1,,} in
@@ -80,11 +80,11 @@ esac
 # Check that current dir is a bundle dir
 if [[ $(pwd) != *"bundle"* ]]; then
   echo "ERROR: The working directory, $(pwd), doesn't seem to be a bundle directory. Please verify the working directory name contains 'bundle'."
-  exit
+  exit 1
 # Ensure at least one master folder exists
 elif [[ -z $(ls -- *master 2> /dev/null) ]]; then
   echo "ERROR: Unable to find a directory containing the name 'master'. Please ensure that the folder containing the master state files and logs is a name contains the string 'master'."
-  exit
+  exit 1
 fi
 
 #####
@@ -99,7 +99,7 @@ for i in *master*/5050*registrar*1*_registry.json; do
     # Check if somehow we're seeing multiple leading masters
     if [[ -n $(echo "${MESOS_LEADER_HOSTNAME}" | awk '{print $2}') ]]; then
       echo -e "ERROR: Detected multiple entries for the leading Mesos master. Please address these issues. The hostnames found were:\n${MESOS_LEADER_HOSTNAME}"
-      exit
+      exit 1
     fi
     # Set the Mesos leader dir based on HOSTNAME_master format
     MESOS_LEADER_DIR="$(pwd)/${MESOS_LEADER_HOSTNAME}_master"
@@ -108,7 +108,7 @@ for i in *master*/5050*registrar*1*_registry.json; do
     # Verify the Mesos leader dir exists
     if [[ ! -d "${MESOS_LEADER_DIR}" ]]; then
       echo "ERROR: Couldn't find a the leading Mesos master directory within this directory. Expected path: ${MESOS_LEADER_DIR}"
-      exit
+      exit 1
     fi
   fi
 done
