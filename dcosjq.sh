@@ -61,10 +61,11 @@ extractBundle ()  {
     echo "Moving original bundle file to ${TICKET_DIR}/storage/${1}"
     mv "${1}" "${TICKET_DIR}/storage/${1}"
     echo "Finished extracting bundle to ${BUNDLE_DIR}"
+    exit 0
   else
     echo "Please specify a compressed DC/OS diagnostic bundle file to extract."
-  fi
-  exit 0
+    exit 1
+  fi  
 }
 
 case ${1,,} in
@@ -74,44 +75,46 @@ case ${1,,} in
 esac
 
 #####
-# Bundle pre-flight checks
-# TODO: Make these less finicky
+# Set target
 #####
-# Check that current dir is a bundle dir
 if [[ $(pwd) != *"bundle"* ]]; then
-  echo "ERROR: The working directory, $(pwd), doesn't seem to be a bundle directory. Please verify the working directory name contains 'bundle'."
-  exit 1
-# Ensure at least one master folder exists
-elif [[ -z $(ls -- *master 2> /dev/null) ]]; then
-  echo "ERROR: Unable to find a directory containing the name 'master'. Please ensure that the folder containing the master state files and logs is a name contains the string 'master'."
-  exit 1
-fi
-
-#####
-# Find the leading Mesos master directory
-# TODO:
-# - This is all terrible and needs to be rewritten
-#####
-for i in *master*/5050*registrar*1*_registry.json; do
-  if [[ -n $(jq '.master.info.hostname' "${i}" | grep -vi 'null\|\[\|\]' | cut -d '"' -f 2) ]]; then
-    # Set the Mesos leader hostname
-    MESOS_LEADER_HOSTNAME="$(jq '.master.info.hostname' "${i}" | grep -vi 'null\|\[\|\]' | cut -d '"' -f 2 | uniq)"
-    # Check if somehow we're seeing multiple leading masters
-    if [[ -n $(echo "${MESOS_LEADER_HOSTNAME}" | awk '{print $2}') ]]; then
-      echo -e "ERROR: Detected multiple entries for the leading Mesos master. Please address these issues. The hostnames found were:\n${MESOS_LEADER_HOSTNAME}"
-      exit 1
-    fi
-    # Set the Mesos leader dir based on HOSTNAME_master format
-    MESOS_LEADER_DIR="$(pwd)/${MESOS_LEADER_HOSTNAME}_master"
-    MESOS_MASTER_STATE="${MESOS_LEADER_DIR}/5050-master_state.json"
-    MESOS_STATE_SUMMARY="${MESOS_LEADER_DIR}/5050-master_state-summary.json"
-    # Verify the Mesos leader dir exists
-    if [[ ! -d "${MESOS_LEADER_DIR}" ]]; then
-      echo "ERROR: Couldn't find a the leading Mesos master directory within this directory. Expected path: ${MESOS_LEADER_DIR}"
-      exit 1
-    fi
+  if [[ ! -z $DCOSJQ_MASTER_STATE ]]; then
+    TARGET_TYPE="file"
+    MESOS_MASTER_STATE=$(cat $DCOSJQ_MASTER_STATE)
+  elif [[ ! -z $(dcos cluster list | grep -i "$(dcos config show core.dcos_url)" | grep -vi 'unavailable') ]]; then
+    TARGET_TYPE="cluster"
+    MESOS_MASTER_STATE=$(curl -k -s -H "Authorization: token=$(dcos config show core.dcos_acs_token)" "$(dcos config show core.dcos_url)/mesos/state")
+  else
+    echo "ERROR: Not connected to any DC/OS clusters and DCOSJQ_MASTER_STATE is unset."
+    exit 1
   fi
-done
+elif [[ $(pwd) == *"bundle"* ]]; then
+  if [[ -z $(ls -- *master 2> /dev/null) ]]; then
+    echo "ERROR: Unable to find a directory containing the name 'master'. Please ensure that the folder containing the master state files and logs is a name contains the string 'master'."
+    exit 1
+  else
+    for i in *master*/5050*registrar*1*_registry.json; do
+      if [[ -n $(jq '.master.info.hostname' "${i}" | grep -vi 'null\|\[\|\]' | cut -d '"' -f 2) ]]; then
+        # Set the Mesos leader hostname
+        MESOS_LEADER_HOSTNAME="$(jq '.master.info.hostname' "${i}" | grep -vi 'null\|\[\|\]' | cut -d '"' -f 2 | uniq)"
+        # Check if somehow we're seeing multiple leading masters
+        if [[ -n $(echo "${MESOS_LEADER_HOSTNAME}" | awk '{print $2}') ]]; then
+          echo -e "ERROR: Detected multiple entries for the leading Mesos master. Please address these issues. The hostnames found were:\n${MESOS_LEADER_HOSTNAME}"
+          exit
+        fi
+        # Set the Mesos leader dir based on HOSTNAME_master format
+        MESOS_LEADER_DIR="$(pwd)/${MESOS_LEADER_HOSTNAME}_master"
+        MESOS_MASTER_STATE=$(cat ${MESOS_LEADER_DIR}/5050-master_state.json)
+        MESOS_STATE_SUMMARY="${MESOS_LEADER_DIR}/5050-master_state-summary.json"
+        # Verify the Mesos leader dir exists
+        if [[ ! -d "${MESOS_LEADER_DIR}" ]]; then
+          echo "ERROR: Couldn't find a the leading Mesos master directory within this directory. Expected path: ${MESOS_LEADER_DIR}"
+          exit 1
+        fi
+      fi
+    done
+  fi
+fi
 
 #####
 # Exhibitor
@@ -175,7 +178,7 @@ printClusterInfo () {
 
 printClusterResources () {
   (echo -e "AGENT_ID IP RESOURCE TOTAL UNRESERVED RESERVED USED"
-  jq -r '"\(.slaves[] | (.id) + " " + (.hostname) + " CPU "+ (.resources.cpus | tostring) + " " + (.unreserved_resources.cpus | tostring) + " " + (.resources.cpus - .unreserved_resources.cpus | tostring | .[:5]) + " " + (.used_resources.cpus | tostring) + "\n - - MEM "+ (.resources.mem | tostring) + " " + (.unreserved_resources.mem | tostring) + " " + (.resources.mem - .unreserved_resources.mem | tostring) + " " + (.used_resources.mem | tostring) + "\n - - DISK "+ (.resources.disk | tostring) + " " + (.unreserved_resources.disk | tostring) + " " + (.resources.disk - .unreserved_resources.disk | tostring) + " " + (.used_resources.disk | tostring) + "\n - - GPU "+ (.resources.gpus | tostring) + " " + (.unreserved_resources.gpus | tostring) + " " + (.resources.gpus - .unreserved_resources.gpus | tostring) + " " + (.used_resources.gpus | tostring))"' "${MESOS_MASTER_STATE}") | column -t
+  echo $MESOS_MASTER_STATE | jq -r '"\(.slaves[] | (.id) + " " + (.hostname) + " CPU "+ (.resources.cpus | tostring) + " " + (.unreserved_resources.cpus | tostring) + " " + (.resources.cpus - .unreserved_resources.cpus | tostring | .[:5]) + " " + (.used_resources.cpus | tostring) + "\n - - MEM "+ (.resources.mem | tostring) + " " + (.unreserved_resources.mem | tostring) + " " + (.resources.mem - .unreserved_resources.mem | tostring) + " " + (.used_resources.mem | tostring) + "\n - - DISK "+ (.resources.disk | tostring) + " " + (.unreserved_resources.disk | tostring) + " " + (.resources.disk - .unreserved_resources.disk | tostring) + " " + (.used_resources.disk | tostring) + "\n - - GPU "+ (.resources.gpus | tostring) + " " + (.unreserved_resources.gpus | tostring) + " " + (.resources.gpus - .unreserved_resources.gpus | tostring) + " " + (.used_resources.gpus | tostring))"') | column -t
 }
 
 case "${1,,}" in
@@ -199,7 +202,7 @@ esac
 printFrameworkList () {
   # echo "+ echo -e \"ID NAME\n\$(jq -r '.frameworks[] | \"\(.id + \" \" + .name)\"' ${MESOS_MASTER_STATE} | sort -k 2)\" | column -t"
   (echo -e "ID NAME"
-  jq -r '.frameworks[] | "\(.id + " " + .name)"' "${MESOS_MASTER_STATE}" | sort -k 2) | column -t
+  echo $MESOS_MASTER_STATE | jq -r '.frameworks[] | "\(.id + " " + .name)"' | sort -k 2) | column -t
 }
 
 # Need to do something crafty with this... Perhaps just print similar output to the summary but more readable...
@@ -209,21 +212,21 @@ printFrameworkIDSummary () {
 
 printFrameworkIDAgents () {
   (echo -e "HOSTNAME SLAVE_ID ACTIVE"
-  jq -r '(.frameworks[] | select(.id == "'"${FRAMEWORK_ID}"'").tasks[].slave_id) as $SLAVEIDS | .slaves[] | select(.id | contains($SLAVEIDS)) | "\((.hostname) + " " + (.id) + " " + (.active | tostring))"' "${MESOS_MASTER_STATE}" | sort -u) | column -t
+  echo $MESOS_MASTER_STATE | jq -r '(.frameworks[] | select(.id == "'"${FRAMEWORK_ID}"'").tasks[].slave_id) as $SLAVEIDS | .slaves[] | select(.id | contains($SLAVEIDS)) | "\((.hostname) + " " + (.id) + " " + (.active | tostring))"' | sort -u) | column -t
 }
 
 printFrameworkIDTasks () {
   (echo -e "ID CURRENT_STATE STATES TIMESTAMP SLAVE_ID"
-  jq -r '"\(.frameworks[].tasks[] | select(.framework_id == "'"${FRAMEWORK_ID}"'") | (.id) + " " + (.state) + " " + (.statuses[] | (.state) + " " + (.timestamp | todate)) + " " + (.slave_id))"' "${MESOS_MASTER_STATE}" | sort -k 1) | column -t
+  echo $MESOS_MASTER_STATE | jq -r '"\(.frameworks[].tasks[] | select(.framework_id == "'"${FRAMEWORK_ID}"'") | (.id) + " " + (.state) + " " + (.statuses[] | (.state) + " " + (.timestamp | todate)) + " " + (.slave_id))"' | sort -k 1) | column -t
 }
 
 printFrameworkIDTaskIDSummary () {
-  jq '.frameworks[].tasks[] | select(.framework_id == "'"${FRAMEWORK_ID}"'") | select(.id == "'"${FRAMEWORK_TASK_ID}"'")' "${MESOS_MASTER_STATE}"
+  echo $MESOS_MASTER_STATE | jq '.frameworks[].tasks[] | select(.framework_id == "'"${FRAMEWORK_ID}"'") | select(.id == "'"${FRAMEWORK_TASK_ID}"'")'
 }
 
 printFrameworkIDRoles () {
   (echo -e "ROLE_NAME"
-  jq -r '"\(.frameworks[] | select(.id == "'"${FRAMEWORK_ID}"'") | (.role) + "\n" + (.tasks[].role))"' "${MESOS_MASTER_STATE}" | sort -u) | column -t
+  echo $MESOS_MASTER_STATE | jq -r '"\(.frameworks[] | select(.id == "'"${FRAMEWORK_ID}"'") | (.role) + "\n" + (.tasks[].role))"' | sort -u) | column -t
 }
 
 printFrameworkCommandUsage () {
@@ -245,7 +248,7 @@ case "${1,,}" in
       "list" )
         printFrameworkList
         ;;
-      "$(jq -r '"\(.frameworks[] | select(.id == "'"${2}"'") | .id)"' "${MESOS_MASTER_STATE}")" )
+      "$(echo $MESOS_MASTER_STATE | jq -r '"\(.frameworks[] | select(.id == "'"${2}"'") | .id)"')" )
         FRAMEWORK_ID=$2
         case "${3,,}" in
           "" )
@@ -260,7 +263,7 @@ case "${1,,}" in
               "" )
                 printFrameworkIDTasks
                 ;;
-              "$(jq -r '"\(.frameworks[].tasks[] | select(.framework_id == "'"${FRAMEWORK_ID}"'") | select(.id == "'"${FRAMEWORK_TASK_ID}"'").id)"' "${MESOS_MASTER_STATE}")" )
+              "$(echo $MESOS_MASTER_STATE | jq -r '"\(.frameworks[].tasks[] | select(.framework_id == "'"${FRAMEWORK_ID}"'") | select(.id == "'"${FRAMEWORK_TASK_ID}"'").id)"')" )
                 printFrameworkIDTaskIDSummary
                 ;;
               * )
@@ -455,7 +458,7 @@ esac
 #####
 printAgentList () {
   (echo -e "ID HOSTNAME ACTIVE REGISTERED"
-  jq -r '"\(.slaves[] | (.id) + " " + (.hostname) + " " + (.active | tostring) + " " + (.registered_time | todate))"' "${MESOS_MASTER_STATE}" | sort -k 2) | column -t
+  echo $MESOS_MASTER_STATE | jq -r '"\(.slaves[] | (.id) + " " + (.hostname) + " " + (.active | tostring) + " " + (.registered_time | todate))"' | sort -k 2) | column -t
 }
 
 # Need to do something crafty with this... Perhaps just print similar output to the summary but more readable...
@@ -464,18 +467,19 @@ printAgentSummary () {
 }
 
 printAgentResources () {
-  echo -e "AGENT_ID IP RESOURCE TOTAL UNRESERVED RESERVED USED\n$(jq -r '"\(.slaves[] | select(.id == "'"${AGENT_ID}"'") | (.id) + " " + (.hostname) + " CPU "+ (.resources.cpus | tostring) + " " + (.unreserved_resources.cpus | tostring) + " " + (.resources.cpus - .unreserved_resources.cpus | tostring | .[:5]) + " " + (.used_resources.cpus | tostring) + "\n - - MEM "+ (.resources.mem | tostring) + " " + (.unreserved_resources.mem | tostring) + " " + (.resources.mem - .unreserved_resources.mem | tostring) + " " + (.used_resources.mem | tostring) + "\n - - DISK "+ (.resources.disk | tostring) + " " + (.unreserved_resources.disk | tostring) + " " + (.resources.disk - .unreserved_resources.disk | tostring) + " " + (.used_resources.disk | tostring) + "\n - - GPU "+ (.resources.gpus | tostring) + " " + (.unreserved_resources.gpus | tostring) + " " + (.resources.gpus - .unreserved_resources.gpus | tostring) + " " + (.used_resources.gpus | tostring))"' "${MESOS_MASTER_STATE}")" | column -t
+  (echo -e "AGENT_ID IP RESOURCE TOTAL UNRESERVED RESERVED USED"
+  echo $MESOS_MASTER_STATE | jq -r '"\(.slaves[] | select(.id == "'"${AGENT_ID}"'") | (.id) + " " + (.hostname) + " CPU "+ (.resources.cpus | tostring) + " " + (.unreserved_resources.cpus | tostring) + " " + (.resources.cpus - .unreserved_resources.cpus | tostring | .[:5]) + " " + (.used_resources.cpus | tostring) + "\n - - MEM "+ (.resources.mem | tostring) + " " + (.unreserved_resources.mem | tostring) + " " + (.resources.mem - .unreserved_resources.mem | tostring) + " " + (.used_resources.mem | tostring) + "\n - - DISK "+ (.resources.disk | tostring) + " " + (.unreserved_resources.disk | tostring) + " " + (.resources.disk - .unreserved_resources.disk | tostring) + " " + (.used_resources.disk | tostring) + "\n - - GPU "+ (.resources.gpus | tostring) + " " + (.unreserved_resources.gpus | tostring) + " " + (.resources.gpus - .unreserved_resources.gpus | tostring) + " " + (.used_resources.gpus | tostring))"') | column -t
 }
 
 printAgentFrameworks () {
   (echo -e "ID NAME"
-  jq -r '.frameworks[] | {id: .id, name: .name, slave_id: .tasks[].slave_id} | select(.slave_id == "'"${AGENT_ID}"'") | "\((.id) + " " + (.name))"' "${MESOS_MASTER_STATE}" | sort -u -k 2) | column -t
+  echo $MESOS_MASTER_STATE | jq -r '.frameworks[] | {id: .id, name: .name, slave_id: .tasks[].slave_id} | select(.slave_id == "'"${AGENT_ID}"'") | "\((.id) + " " + (.name))"' | sort -u -k 2) | column -t
 }
 
 # It might make sense to add framework ids in here
 printAgentTasks () {
   (echo -e "ID NAME CURRENT_STATE STATES TIMESTAMP"
-  jq -r '"\(.frameworks[].tasks[] | select(.slave_id == "'"${AGENT_ID}"'") | (.id) + " " +  (.name) + " " + (.state) + " " + (.statuses[] | (.state) + " " + (.timestamp | todate)))"' "${MESOS_MASTER_STATE}" | sort -k 1) | column -t
+  echo $MESOS_MASTER_STATE | jq -r '"\(.frameworks[].tasks[] | select(.slave_id == "'"${AGENT_ID}"'") | (.id) + " " +  (.name) + " " + (.state) + " " + (.statuses[] | (.state) + " " + (.timestamp | todate)))"' | sort -k 1) | column -t
 }
 
 # printAgentRoles () {
@@ -502,7 +506,7 @@ case "${1,,}" in
       "list" )
         printAgentList
         ;;
-      "$(jq -r '"\(.slaves[] | select(.id == "'"${2}"'") | .id)"' "${MESOS_MASTER_STATE}")" )
+      "$(echo $MESOS_MASTER_STATE | jq -r '"\(.slaves[] | select(.id == "'"${2}"'") | .id)"')" )
         AGENT_ID=$2
         case "${3,,}" in
           "resources" )
@@ -629,7 +633,7 @@ checkErrors () {
   fi
 
   # Multiple native Marathon instance check
-  NATIVE_MARATHON_LIST="$(jq -r '"\(.frameworks[] | select(.name == "marathon") | select(.webui_url? != null) | (.name) + " " + (.id) + " " + (.active | tostring) + " " + (.webui_url))"' $MESOS_MASTER_STATE)"
+  NATIVE_MARATHON_LIST="$(echo $MESOS_MASTER_STATE | jq -r '"\(.frameworks[] | select(.name == "marathon") | select(.webui_url? != null) | (.name) + " " + (.id) + " " + (.active | tostring) + " " + (.webui_url))"')"
   if [[ $(echo "${NATIVE_MARATHON_LIST}" | wc -l) -gt 1 ]]; then
     echo -e "\xE2\x9D\x8C Multiple native Marathon frameworks with webui_url found:"
     (echo -e "NAME ID ACTIVE WEBUI_URL"
@@ -639,7 +643,7 @@ checkErrors () {
   fi
 
   # Inactive framework check
-  INACTIVE_FRAMEWORK_LIST="$(jq -r '"\(.frameworks[] | select(.active? == false) | (.name) + " " + (.id) + " " + (.active | tostring))"' $MESOS_MASTER_STATE)"
+  INACTIVE_FRAMEWORK_LIST="$(echo $MESOS_MASTER_STATE | jq -r '"\(.frameworks[] | select(.active? == false) | (.name) + " " + (.id) + " " + (.active | tostring))"')"
   if [[ -n $INACTIVE_FRAMEWORK_LIST ]]; then
     echo -e "\xE2\x9D\x8C Inactive frameworks found:"
     (echo -e "NAME ID ACTIVE"
