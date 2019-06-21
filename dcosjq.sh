@@ -65,7 +65,7 @@ extractBundle ()  {
   else
     echo "Please specify a compressed DC/OS diagnostic bundle file to extract."
     exit 1
-  fi  
+  fi
 }
 
 case ${1,,} in
@@ -79,10 +79,10 @@ esac
 #####
 if [[ $(pwd) != *"bundle"* ]]; then
   if [[ ! -z $DCOSJQ_MASTER_STATE ]]; then
-    TARGET_TYPE="file"
+    # TARGET_TYPE="file"
     MESOS_MASTER_STATE=$(cat $DCOSJQ_MASTER_STATE)
   elif [[ ! -z $(dcos cluster list | grep -i "$(dcos config show core.dcos_url)" | grep -vi 'unavailable') ]]; then
-    TARGET_TYPE="cluster"
+    # TARGET_TYPE="cluster"
     MESOS_MASTER_STATE=$(curl -k -s -H "Authorization: token=$(dcos config show core.dcos_acs_token)" "$(dcos config show core.dcos_url)/mesos/state")
   else
     echo "ERROR: Not connected to any DC/OS clusters and DCOSJQ_MASTER_STATE is unset."
@@ -168,10 +168,6 @@ esac
 #####
 # Cluster
 #####
-# printClusterInfo () {
-#   jq -r '"\("Cluster Name: " + .cluster_name + "\nDCOS Version: " + .dcos_version + "\nDCOS Security Mode: " + .security + "\nPlatform: " + .platform + "\nProvider: " + .provider + "\nDocker GC Enabled: " + .enable_docker_gc + "\nMesos GC Delay: " + .gc_delay + "\nProxy: " + .use_proxy + "\nDNS Search Domains: " + .dns_search + "\nGPU Support: " + .enable_gpu_isolation + "\nGPUs Scarce: " + .gpus_are_scarce + "\nExhibitor Backend: " + .exhibitor_storage_backend + "\nNumber of Masters: " + .num_masters + "\nMaster Discovery: " + .master_discovery + "\nMaster List: " + .master_list + "\nResolvers: " + .resolvers)"' "${MESOS_LEADER_DIR}/opt/mesosphere/etc/expanded.config.json"
-# }
-
 printClusterInfo () {
   jq -r '.' "${MESOS_LEADER_DIR}/opt/mesosphere/etc/expanded.config.json"
 }
@@ -216,6 +212,11 @@ printFrameworkIDAgents () {
 }
 
 printFrameworkIDTasks () {
+  (echo -e "ID STATE TIMESTAMP SLAVE_ID"
+  echo $MESOS_MASTER_STATE | jq -r '"\(.frameworks[].tasks[] | select(.framework_id == "'"${FRAMEWORK_ID}"'") | (.id) + " " + (.statuses[-1] | (.state) + " " + (.timestamp | todate)) + " " + (.slave_id))"' | sort -k 1) | column -t
+}
+
+printFrameworkIDTasksAll () {
   (echo -e "ID CURRENT_STATE STATES TIMESTAMP SLAVE_ID"
   echo $MESOS_MASTER_STATE | jq -r '"\(.frameworks[].tasks[] | select(.framework_id == "'"${FRAMEWORK_ID}"'") | (.id) + " " + (.state) + " " + (.statuses[] | (.state) + " " + (.timestamp | todate)) + " " + (.slave_id))"' | sort -k 1) | column -t
 }
@@ -262,6 +263,9 @@ case "${1,,}" in
             case "${4}" in
               "" )
                 printFrameworkIDTasks
+                ;;
+              "--all" )
+                printFrameworkIDTasksAll
                 ;;
               "$(echo $MESOS_MASTER_STATE | jq -r '"\(.frameworks[].tasks[] | select(.framework_id == "'"${FRAMEWORK_ID}"'") | select(.id == "'"${FRAMEWORK_TASK_ID}"'").id)"')" )
                 printFrameworkIDTaskIDSummary
@@ -596,7 +600,9 @@ checkErrors () {
   #########################
   echo "************************************"
   echo "****** DC/OS CLUSTER SUMMARY: ******"
-  jq -r '"\("* Cluster Name: " + .cluster_name + "\n* DCOS Version: " + .dcos_version + "\n* DCOS Security Mode: " + .security + "\n* Platform: " + .platform + "\n* Provider: " + .provider + "\n* Docker Registry URL: " + .cluster_docker_registry_url + "\n* Docker GC Enabled: " + .enable_docker_gc + "\n* Mesos GC Delay: " + .gc_delay + "\n* Proxy: " + .use_proxy + "\n* DNS Search Domains: " + .dns_search + "\n* GPU Support: " + .enable_gpu_isolation + "\n* GPUs Scarce: " + .gpus_are_scarce + "\n* Exhibitor Backend: " + .exhibitor_storage_backend + "\n* Number of Masters: " + .num_masters + "\n* Master Discovery: " + .master_discovery + "\n* Master List: " + .master_list + "\n* Resolvers: " + .resolvers)"' "${MESOS_LEADER_DIR}/opt/mesosphere/etc/expanded.config.json"
+  python -c 'import sys, yaml, json; json.dump(yaml.load(sys.stdin), sys.stdout, indent=4)' < "${MESOS_LEADER_DIR}/opt/mesosphere/etc/user.config.yaml" | jq -r '"\("Cluster Name: " + .cluster_name + "\nSecurity Mode: " + .security + "\nNumber of Masters: " + .num_masters)"'
+  echo "Cluster config.yaml:"
+  cat "${MESOS_LEADER_DIR}/opt/mesosphere/etc/user.config.yaml" | sed 's/^/     /g'
   echo "************************************"
 
   #########################
