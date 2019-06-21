@@ -8,8 +8,8 @@ This project is currently a work-in-progress and will likely be updated regularl
 ```
 $ git clone git@github.com:some-things/dcosjq.git
 $ cd dcosjq
-$ sudo cp dcosjq.sh /usr/local/bin/dcosjq
-$ sudo chmod +x /usr/local/bin/dcosjq
+$ cp dcosjq.sh /usr/local/bin/dcosjq
+$ chmod +x /usr/local/bin/dcosjq
 ```
 ## Usage
 Note: For JSON and log parsing features, `dcosjq` must be executed from within the DC/OS diagnostic bundles root directory with all files decompressed.
@@ -161,4 +161,3 @@ Any issues, features, or pull requests are welcome!
 * Email: dustinmnemes@gmail.com
 * GitHub: https://github.com/some-things
 * DC/OS Community Slack (https://chat.dcos.io/): @dnemes.mesospshere
-* LinkedIn: https://www.linkedin.com/in/dustinnemes/

@@ -218,7 +218,7 @@ printFrameworkIDTasks () {
 
 printFrameworkIDTasksAll () {
   (echo -e "ID CURRENT_STATE STATES TIMESTAMP SLAVE_ID"
-  echo $MESOS_MASTER_STATE | jq -r '"\(.frameworks[].tasks[] | select(.framework_id == "'"${FRAMEWORK_ID}"'") | (.id) + " " + (.state) + " " + (.statuses[] | (.state) + " " + (.timestamp | todate)) + " " + (.slave_id))"' | sort -k 1) | column -t
+  echo $MESOS_MASTER_STATE | jq -r '"\(.frameworks[] | select(.id == "'"${FRAMEWORK_ID}"'") | .tasks[], .completed_tasks[], .unreachable_tasks[] | (.id) + " " + (.state) + " " + (.statuses[] | (.state) + " " + (.timestamp | todate)) + " " + (.slave_id))"' | sort -k 1 -k 4 -r) | column -t
 }
 
 printFrameworkIDTaskIDSummary () {
