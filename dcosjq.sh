@@ -79,11 +79,13 @@ esac
 #####
 if [[ $(pwd) != *"bundle"* ]]; then
   if [[ ! -z $DCOSJQ_MASTER_STATE ]]; then
-    # TARGET_TYPE="file"
+    TARGET_TYPE="file"
     MESOS_MASTER_STATE=$(cat $DCOSJQ_MASTER_STATE)
   elif [[ ! -z $(dcos cluster list | grep -i "$(dcos config show core.dcos_url)" | grep -vi 'unavailable') ]]; then
-    # TARGET_TYPE="cluster"
+    TARGET_TYPE="cluster"
     MESOS_MASTER_STATE=$(curl -k -s -H "Authorization: token=$(dcos config show core.dcos_acs_token)" "$(dcos config show core.dcos_url)/mesos/state")
+    MESOS_STATE_SUMMARY=$(curl -k -s -H "Authorization: token=$(dcos config show core.dcos_acs_token)" "$(dcos config show core.dcos_url)/mesos/state-summary")
+    EXHIBITOR_CLUSTER_STATUS=$(curl -k -s -H "Authorization: token=$(dcos config show core.dcos_acs_token)" "$(dcos config show core.dcos_url)/exhibitor/exhibitor/v1/cluster/status")
   else
     echo "ERROR: Not connected to any DC/OS clusters and DCOSJQ_MASTER_STATE is unset."
     exit 1
@@ -105,7 +107,8 @@ elif [[ $(pwd) == *"bundle"* ]]; then
         # Set the Mesos leader dir based on HOSTNAME_master format
         MESOS_LEADER_DIR="$(pwd)/${MESOS_LEADER_HOSTNAME}_master"
         MESOS_MASTER_STATE=$(cat ${MESOS_LEADER_DIR}/5050-master_state.json)
-        MESOS_STATE_SUMMARY="${MESOS_LEADER_DIR}/5050-master_state-summary.json"
+        MESOS_STATE_SUMMARY=$(cat $MESOS_LEADER_DIR/5050-master_state-summary.json)
+        EXHIBITOR_CLUSTER_STATUS=$(cat $MESOS_LEADER_DIR/*-exhibitor_exhibitor_v1_cluster_status.json)
         # Verify the Mesos leader dir exists
         if [[ ! -d "${MESOS_LEADER_DIR}" ]]; then
           echo "ERROR: Couldn't find a the leading Mesos master directory within this directory. Expected path: ${MESOS_LEADER_DIR}"
@@ -120,12 +123,12 @@ fi
 # Exhibitor
 #####
 printExhibitorLeader () {
-  jq -r '"Exhibitor Leader: \(.[] | select(.isLeader == true) | .hostname)"' "${MESOS_LEADER_DIR}/"*"-exhibitor_exhibitor_v1_cluster_status.json"
+  echo $EXHIBITOR_CLUSTER_STATUS | jq -r '"Exhibitor Leader: \(.[] | select(.isLeader == true) | .hostname)"'
 }
 
 printExhibitorStatus () {
   (echo -e "HOSTNAME LEADER DESCRIPTION CODE"
-  jq -r '"\(.[] | (.hostname) + " " + (.isLeader | tostring) + " " + (.description) + " " + (.code | tostring))"' "${MESOS_LEADER_DIR}/"*"-exhibitor_exhibitor_v1_cluster_status.json") | column -t
+  echo $EXHIBITOR_CLUSTER_STATUS | jq -r '"\(.[] | (.hostname) + " " + (.isLeader | tostring) + " " + (.description) + " " + (.code | tostring))"') | column -t
 }
 
 case ${1,,} in
@@ -203,7 +206,7 @@ printFrameworkList () {
 
 # Need to do something crafty with this... Perhaps just print similar output to the summary but more readable...
 printFrameworkIDSummary () {
-  jq '.frameworks[] | select(.id == "'"${FRAMEWORK_ID}"'")' "${MESOS_STATE_SUMMARY}"
+  echo $MESOS_STATE_SUMMARY | jq '.frameworks[] | select(.id == "'"${FRAMEWORK_ID}"'")'
 }
 
 printFrameworkIDAgents () {
@@ -467,7 +470,7 @@ printAgentList () {
 
 # Need to do something crafty with this... Perhaps just print similar output to the summary but more readable...
 printAgentSummary () {
-  jq '.slaves[] | select(.id == "'"${AGENT_ID}"'") | .' "${MESOS_STATE_SUMMARY}"
+  echo $MESOS_STATE_SUMMARY | jq '.slaves[] | select(.id == "'"${AGENT_ID}"'") | .'
 }
 
 printAgentResources () {
