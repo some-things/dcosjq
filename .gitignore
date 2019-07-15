@@ -34,3 +34,6 @@ beta.sh
 
 # Demo stuff
 demo-files/
+
+# dockerfiles
+tmp_Dockerfile

@@ -11,6 +11,24 @@ $ cd dcosjq
 $ cp dcosjq.sh /usr/local/bin/dcosjq
 $ chmod +x /usr/local/bin/dcosjq
 ```
+## Running via Docker
+To run `dcosjq` against a bundle using Docker, execute the following commands from while the bundle root is your working directory:
+
+```
+$ docker run --rm -it -v "$(pwd)":/bundle dnemes/dcosjq:latest
+$ cd bundle
+$ <run any dcosjq commands>
+```
+To run `dcosjq` against a live cluster using Docker, execute the following commands:
+
+```
+$ docker run --rm -it dnemes/dcosjq:latest
+$ cluster-setup
+Target cluster DC/OS version: <your-cluster-version>
+Target cluster URL (https://<cluster-url>): <your-cluster-url>
+<complete your cluster authentication>
+$ <run any dcosjq commands>
+```
 ## Usage
 Note: For JSON and log parsing features, `dcosjq` must be executed from within the DC/OS diagnostic bundles root directory with all files decompressed.
 ### Parsing JSON files:

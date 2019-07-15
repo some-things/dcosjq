@@ -834,7 +834,10 @@ checkErrors () {
     #########################
     echo "************************************"
     echo "****** DC/OS CLUSTER SUMMARY: ******"
-    python -c 'import sys, yaml, json; json.dump(yaml.load(sys.stdin), sys.stdout, indent=4)' < "${MESOS_LEADER_DIR}/opt/mesosphere/etc/user.config.yaml" | jq -r '"\("Cluster Name: " + .cluster_name + "\nSecurity Mode: " + .security + "\nNumber of Masters: " + .num_masters)"'
+    # python -c 'import sys, yaml, json; json.dump(yaml.load(sys.stdin), sys.stdout, indent=4)' < "${MESOS_LEADER_DIR}/opt/mesosphere/etc/user.config.yaml" | jq -r '"\("Cluster Name: " + .cluster_name + "\nSecurity Mode: " + .security + "\nNumber of Masters: " + .num_masters)"'
+    echo "Cluster Name: $(awk '/cluster_name/{getline; print}' $MESOS_LEADER_DIR/opt/mesosphere/etc/user.config.yaml | sed 's/^[ \t]*//;s/[ \t]*$//')"
+    echo "Security Mode: $(awk '/security/{getline; print}' $MESOS_LEADER_DIR/opt/mesosphere/etc/user.config.yaml | sed 's/^[ \t]*//;s/[ \t]*$//')"
+    echo "Number of Masters: $(awk '/num_masters/{getline; print}' $MESOS_LEADER_DIR/opt/mesosphere/etc/user.config.yaml | sed 's/^[ \t]*//;s/[ \t]*$//')"
     echo "Cluster config.yaml:"
     cat "${MESOS_LEADER_DIR}/opt/mesosphere/etc/user.config.yaml" | sed 's/^/     /g'
     echo "************************************"
