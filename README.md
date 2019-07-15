@@ -5,20 +5,22 @@ The intent of `dcosjq` is to mimic the functionality of the [DC/OS CLI](https://
 
 This project is currently a work-in-progress and will likely be updated regularly. Any feedback or contributions are welcome.
 ## Installation
+
 ```
 $ git clone git@github.com:some-things/dcosjq.git
 $ cd dcosjq
 $ cp dcosjq.sh /usr/local/bin/dcosjq
 $ chmod +x /usr/local/bin/dcosjq
 ```
+
 ## Running via Docker
 To run `dcosjq` against a bundle using Docker, execute the following commands from while the bundle root is your working directory:
 
 ```
-$ docker run --rm -it -v "$(pwd)":/bundle dnemes/dcosjq:latest
-$ cd bundle
+$ docker run --rm -it -v "$(pwd)":/bundle -w="/bundle" dnemes/dcosjq:latest
 $ <run any dcosjq commands>
 ```
+
 To run `dcosjq` against a live cluster using Docker, execute the following commands:
 
 ```
@@ -29,6 +31,14 @@ Target cluster URL (https://<cluster-url>): <your-cluster-url>
 <complete your cluster authentication>
 $ <run any dcosjq commands>
 ```
+
+Note: You may consider adding the following aliases to your bashrc/zshrc file:
+
+```
+alias dcosjq-docker='docker run --rm -it dnemes/dcosjq:latest'
+alias dcosjq-docker-bundle='docker run --rm -it -v "$(pwd)":/bundle -w="/bundle" dnemes/dcosjq:latest'
+```
+
 ## Usage
 Note: For JSON and log parsing features, `dcosjq` must be executed from within the DC/OS diagnostic bundles root directory with all files decompressed.
 ### Parsing JSON files:
