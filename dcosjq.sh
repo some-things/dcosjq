@@ -81,8 +81,7 @@ esac
 if [[ $(pwd) != *"bundle"* ]]; then
   if [[ ! -z $DCOSJQ_MASTER_STATE ]]; then
     TARGET_TYPE="file"
-  # elif [[ ! -z $(dcos cluster list | grep -i "$(dcos config show core.dcos_url)" | grep -vi 'unavailable') ]]; then
-  elif [[ $(dcos node | head -n1) != *"unreachable"* ]]; then
+  elif [[ ! -z $(dcos node 2> /dev/null | head -n1 | grep -vi 'unreachable') ]]; then
     TARGET_TYPE="cluster"
   else
     echo "ERROR: Not connected to any DC/OS clusters and DCOSJQ_MASTER_STATE is unset."
