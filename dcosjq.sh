@@ -910,12 +910,12 @@ checkErrors () {
     # Log Checks
     #########################
     # Dockerd running check
-    DOCKER_DAEMON_NOT_RUNNING="$(comm -23 <(ls -d -- */*ps*aux* 2> /dev/null | cut -d '/' -f 1) <(grep -i 'dockerd' -- */ps*aux* 2> /dev/null | sort -u | cut -d '/' -f 1))"
-    for f in */ps*aux*; do
+    DOCKER_DAEMON_NOT_RUNNING="$(comm -23 <(ls -d -- *agent/*ps*aux* 2> /dev/null | cut -d '/' -f 1) <(grep -i 'dockerd' -- *agent/*ps*aux* 2> /dev/null | sort -u | cut -d '/' -f 1))"
+    for f in *agent/*ps*aux*; do
       if [[ -s "$f" ]]; then
         if [[ ! -z $DOCKER_DAEMON_NOT_RUNNING ]]; then
-          echo -e "\xE2\x9D\x8C Docker daemon appears to not be running on $(echo $DOCKER_DAEMON_NOT_RUNNING | wc -l | tr -d '[:space:]') node(s). Please ensure that Docker is enabled on boot and running on the following node(s):"
-          echo -e $DOCKER_DAEMON_NOT_RUNNING | sed 's/^/     /g'
+          echo -e "\xE2\x9D\x8C Docker daemon appears to not be running on $(echo "$DOCKER_DAEMON_NOT_RUNNING" | wc -l | tr -d '[:space:]') node(s). Please ensure that Docker is enabled on boot and running on the following node(s):"
+          echo -e "$DOCKER_DAEMON_NOT_RUNNING" | sed 's/^/     /g'
         else
           echo -e "\xE2\x9C\x94 No nodes missing a running Docker daemon."
         fi
