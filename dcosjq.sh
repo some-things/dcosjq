@@ -969,6 +969,16 @@ checkErrors () {
       echo -e "\xE2\x9C\x94 No private registry certificate errors found."
     fi
 
+    # Overlay master module in RECOVERING state check
+    OVERLAY_RECOVERING_MESSAGES="$(grep -i "overlay-master in.*RECOVERING.*state" -- */dcos-mesos-master* | awk 'BEGIN {FS="/"}; {print$1}' | sort -k 2 | uniq -c)"
+    if [[ -n $OVERLAY_RECOVERING_MESSAGES ]]; then
+      echo -e "\xE2\x9D\x8C Detected overlay master module in RECOVERING state events on the following master(s) (Note: If this issue is still present, failing over the affected Mesos leader can resolve the issue):"
+      (echo -e "EVENTS NODE"
+      echo -e "$OVERLAY_RECOVERING_MESSAGES") | column -t | sed 's/^/     /g'
+    else
+      echo -e "\xE2\x9C\x94 No overlay master module in RECOVERING state events found."
+    fi
+
     # KMEM event check
     KMEM_EVENTS_PER_NODE="$(grep -i 'SLUB: Unable to allocate memory on node -1' -- */dmesg* 2> /dev/null | awk 'BEGIN {FS="/"}; {print$1}' | sort -k 2 | uniq -c)"
     if [[ -n $KMEM_EVENTS_PER_NODE ]]; then
