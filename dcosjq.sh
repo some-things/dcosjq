@@ -838,7 +838,10 @@ checkErrors () {
     echo "Security Mode: $(awk '/security/{getline; print}' $MESOS_LEADER_DIR/opt/mesosphere/etc/user.config.yaml | sed 's/^[ \t]*//;s/[ \t]*$//')"
     echo "Number of Masters: $(awk '/num_masters/{getline; print}' $MESOS_LEADER_DIR/opt/mesosphere/etc/user.config.yaml | sed 's/^[ \t]*//;s/[ \t]*$//')"
     echo "Cluster config.yaml:"
-    cat "${MESOS_LEADER_DIR}/opt/mesosphere/etc/user.config.yaml" | sed 's/^/     /g'
+    sed 's/^/     /g' < "${MESOS_LEADER_DIR}/opt/mesosphere/etc/user.config.yaml"
+    printExhibitorLeader
+    printMesosLeader
+    printMarathonLeader
     echo "************************************"
 
     #########################
@@ -924,6 +927,8 @@ checkErrors () {
       fi
       break
     done
+
+    # Firewalld running check
 
     # Zookeeper fsync event check
     ZOOKEEPER_FSYNC_EVENTS="$(grep -i 'fsync-ing the write ahead log in' -- */dcos-exhibitor.service* 2> /dev/null)"
