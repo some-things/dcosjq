@@ -37,3 +37,6 @@ demo-files/
 
 # dockerfiles
 tmp_Dockerfile
+
+# Make
+Makefile
