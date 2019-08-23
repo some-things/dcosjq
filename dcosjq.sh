@@ -49,7 +49,8 @@ extractBundle ()  {
     read -r -p "Ticket number: " TICKET_NUM
     TICKET_DIR="${USER_TICKETS_DIR}/${TICKET_NUM}"
     mkdir -p "${TICKET_DIR}"
-    BUNDLE_DIR="${USER_TICKETS_DIR}/${TICKET_NUM}/${1%%.zip}"
+    BUNDLE_NAME=$(basename "$1")
+    BUNDLE_DIR="${USER_TICKETS_DIR}/${TICKET_NUM}/${BUNDLE_NAME%%.zip}"
     echo "Extracting bundle to ${BUNDLE_DIR}..."
     unzip -q -d "${BUNDLE_DIR}" "${1}"
     echo "Decompressing all bundle files..."
@@ -59,8 +60,8 @@ extractBundle ()  {
     formatJSON
     # Move the compressed log bundle to the 'storage' directory; Comment the next 3 lines out to not move the original file.
     mkdir -p "${TICKET_DIR}/storage"
-    echo "Moving original bundle file to ${TICKET_DIR}/storage/${1}"
-    mv "${1}" "${TICKET_DIR}/storage/${1}"
+    echo "Moving original bundle file to ${TICKET_DIR}/storage/${BUNDLE_NAME}"
+    mv "${1}" "${TICKET_DIR}/storage/${BUNDLE_NAME}"
     echo "Finished extracting bundle to ${BUNDLE_DIR}"
     exit 0
   else
