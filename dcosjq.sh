@@ -71,7 +71,7 @@ extractBundle ()  {
 }
 
 case ${1,,} in
-  "extract" )
+  "extract"|"x" )
     extractBundle "${2}"
     ;;
 esac
