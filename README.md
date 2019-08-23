@@ -38,6 +38,13 @@ alias dcosjq-docker='docker run --rm -it dnemes/dcosjq:latest'
 alias dcosjq-docker-bundle='docker run --rm -it -v "$(pwd)":/bundle -w="/bundle" dnemes/dcosjq:latest'
 ```
 
+## Environment Variables
+`dcosjq` supports the following environment variables:
+
+|Variable|Default|Description|
+|---|---|---|
+|DCOSJQ_TICKETS_DIR|${HOME}/Documents/logs/tickets|Directory where the bundle will be extracted|
+
 ## Usage
 Note: For JSON and log parsing features, `dcosjq` must be executed from within the DC/OS diagnostic bundles root directory with all files decompressed.
 ### Parsing JSON files:

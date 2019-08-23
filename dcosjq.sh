@@ -41,7 +41,7 @@ esac
 # Extract
 #####
 # Set the full path to where you would like to have bundle and ticket files and folders created.
-USER_TICKETS_DIR="${HOME}/Documents/logs/tickets"
+USER_TICKETS_DIR="${DCOSJQ_TICKETS_DIR:-${HOME}/Documents/logs/tickets}"
 
 # USER_TICKETS_DIR must be set to a valid path for any 'extract' commands to function properly
 extractBundle ()  {
