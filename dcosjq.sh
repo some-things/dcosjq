@@ -18,9 +18,9 @@ fi
 formatJSON () {
   if [[ -n $JSON_FILES ]]; then
     echo "Formatting JSON..."
-    find "${JSON_DIR}" -name '*.json' -exec sh -c '
-    cat <<< "$(jq '.' < $1 2> /dev/null)" > $1
-    ' sh {} \;
+    find "${JSON_DIR}" -name '*.json' | while read -r each_file; do
+      cat <<< "$(jq '.' < $each_file 2> /dev/null)" > "$each_file"
+    done
     echo "Formatting complete."
   else
     echo "Error: No JSON files found within this directory and its subdirectories."
