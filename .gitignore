@@ -37,6 +37,8 @@ demo-files/
 
 # dockerfiles
 tmp_Dockerfile
+.dockerignore
 
 # Make
 Makefile
+build.sh
