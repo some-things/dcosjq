@@ -52,7 +52,27 @@ extractBundle ()  {
     BUNDLE_NAME=$(basename "$1")
     BUNDLE_DIR="${USER_TICKETS_DIR}/${TICKET_NUM}/${BUNDLE_NAME%%.zip}"
     echo "Extracting bundle to ${BUNDLE_DIR}..."
-    unzip -q -d "${BUNDLE_DIR}" "${1}"
+    unzip -q -d "${BUNDLE_DIR}" "${1}" 2> /dev/null
+    
+    # Attempt to handle corrupt zip files
+    if [ $? -ne 0 ]; then
+      echo "Bundle extract failed. Is the bundle corrupt?"
+      echo "Checking for the presence of 7zip..."
+      if command -v 7z > /dev/null 2>&1; then
+        echo "Attempting to extract archive with errors using 7zip..."
+        7z x "${1}" -o"${BUNDLE_DIR}" > /dev/null 2>&1
+        if [ -d "${BUNDLE_DIR}" ]; then
+          echo "Successfully extracted files from corrupt archive using 7zip."
+        else
+          echo "Could not recover the corrupt archive."
+          exit 1
+        fi
+      else
+        echo "Could not extract corrupt archive and 7zip was not found. Please consider using a tool such as 7zip or The Unarchiver to extract the files."
+        exit 1
+      fi
+    fi
+
     echo "Decompressing all bundle files..."
     find "${BUNDLE_DIR}" -type f -name '*.gz' -exec gunzip -q "{}" \;
     JSON_FILES="$(find "${BUNDLE_DIR}" -type f -name '*.json')"
