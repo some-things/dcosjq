@@ -85,13 +85,16 @@ $ dcosjq framework <id>
 $ dcosjq framework <id> agents
 
 # Mesos framework's tasks
-$ dcosjq framework <id> tasks
+$ dcosjq framework <id> tasks [--all]
 
 # Mesos framework's task's information
 $ dcosjq framework <id> tasks <id>
 
 # Mesos framework's roles
 $ dcosjq framework <id> roles
+
+# Mesos framework's DC/OS package options (if applicable)
+$ dcosjq framework <id> options
 ```
 ##### - Task:
 ```
