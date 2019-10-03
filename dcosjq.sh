@@ -28,7 +28,7 @@ formatJSON () {
   fi
 }
 
-case "${1,,}" in
+case "${1}" in
   "format" )
     JSON_FILES="$(find . -type f -name '*.json')"
     JSON_DIR="$(pwd)"
@@ -90,7 +90,7 @@ extractBundle ()  {
   fi
 }
 
-case ${1,,} in
+case ${1} in
   "extract"|"x" )
     extractBundle "${2}"
     ;;
@@ -231,9 +231,9 @@ dcosjq exhibitor usage:
 EOF
 }
 
-case ${1,,} in
+case ${1} in
   "exhibitor")
-    case ${2,,} in
+    case ${2} in
       "" )
         printExhibitorCommandUsage
         ;;
@@ -271,9 +271,9 @@ dcosjq mesos usage:
 EOF
 }
 
-case "${1,,}" in
+case "${1}" in
   "mesos" )
-    case "${2,,}" in
+    case "${2}" in
       "" )
         printMesosCommandUsage
         ;;
@@ -312,9 +312,9 @@ dcosjq cluster usage:
 EOF
 }
 
-case "${1,,}" in
+case "${1}" in
   "cluster" )
-    case "${2,,}" in
+    case "${2}" in
       "" )
         printClusterCommandUsage
         ;;
@@ -375,6 +375,11 @@ printFrameworkIDRoles () {
   getEndpoint | jq -r '"\(.frameworks[] | select(.id == "'"${FRAMEWORK_ID}"'") | (.role) + "\n" + (.tasks[].role))"' | sort -u) | column -t
 }
 
+printFrameworkIDOptions () {
+  TARGET_FILE="mesos_state"
+  getEndpoint | jq -r '.frameworks[] | select(.name == "marathon") | .tasks[].labels | from_entries | select(.DCOS_PACKAGE_FRAMEWORK_NAME == "'"$(getEndpoint | jq -r '.frameworks[] | select(.id == "'"${FRAMEWORK_ID}"'") | .name')"'") | .DCOS_PACKAGE_OPTIONS' | base64 --decode | jq '.'
+}
+
 printFrameworkCommandUsage () {
   cat <<EOF
 dcosjq framework usage:
@@ -387,7 +392,7 @@ dcosjq framework usage:
 EOF
 }
 
-case "${1,,}" in
+case "${1}" in
   "framework" )
     # Beware of case sensitivity here :)
     case "${2}" in
@@ -399,7 +404,7 @@ case "${1,,}" in
         ;;
       "$(TARGET_FILE="mesos_state"; getEndpoint | jq -r '"\(.frameworks[] | select(.id == "'"${2}"'") | .id)"')" )
         FRAMEWORK_ID=$2
-        case "${3,,}" in
+        case "${3}" in
           "" )
             printFrameworkIDSummary
             ;;
@@ -425,6 +430,9 @@ case "${1,,}" in
             ;;
           "roles" )
             printFrameworkIDRoles
+            ;;
+          "options" )
+            printFrameworkIDOptions
             ;;
           * )
             printFrameworkIDSummary
@@ -460,7 +468,7 @@ dcosjq task usage:
 EOF
 }
 
-case "${1,,}" in
+case "${1}" in
   "task" )
     case "${2}" in
       "" )
@@ -529,7 +537,7 @@ dcosjq agent usage:
 EOF
 }
 
-case "${1,,}" in
+case "${1}" in
   "agent" )
     # Beware of case sensitivity here :)
     case "${2}" in
@@ -541,7 +549,7 @@ case "${1,,}" in
         ;;
       "$(TARGET_FILE="mesos_state"; getEndpoint | jq -r '"\(.slaves[] | select(.id == "'"${2}"'") | .id)"')" )
         AGENT_ID=$2
-        case "${3,,}" in
+        case "${3}" in
           "resources" )
             printAgentResources
             ;;
@@ -596,7 +604,7 @@ dcosjq role usage:
 EOF
 }
 
-case "${1,,}" in
+case "${1}" in
   "role" )
     case "${2}" in
       "" )
@@ -718,9 +726,9 @@ dcosjq marathon usage:
 EOF
 }
 
-case "${1,,}" in
+case "${1}" in
   "marathon" )
-    case "${2,,}" in
+    case "${2}" in
       "" )
         printMarathonCommandUsage
         ;;
@@ -921,7 +929,7 @@ checkErrors () {
     fi
 
     # State size check
-    MESOS_STATE_SIZE_LIST="$(find . -type f \( -iname "*master_state*" ! -iname "*overlay*" ! -iname "*summary*" \) -exec du -k {} \; | awk '{print$1}' | sort -u)"
+    MESOS_STATE_SIZE_LIST="$(find . -type f \( -iname "*master_state*" ! -iname "*overlay*" ! -iname "*summary*" \) -exec du -k "{}" \; | awk '{print$1}' | sort -u)"
     for i in $MESOS_STATE_SIZE_LIST; do
       if [[ $i -ge 5000 ]]; then
         echo -e "\xE2\x9D\x8C The Mesos state file is currently $(echo "scale=2; $i/1000" | bc -l) MB. State files larger than 5 MB can cause issues with the DC/OS UI. Please see the following link for more information and steps to reduce the size: https://mesosphere-community.force.com/s/article/Reducing-state-json-size"
@@ -1030,7 +1038,7 @@ checkErrors () {
   fi
 }
 
-case "${1,,}" in
+case "${1}" in
   "checks" )
     checkErrors
     ;;
