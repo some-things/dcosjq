@@ -389,6 +389,7 @@ dcosjq framework usage:
   framework <framework-id> tasks [--all] - Prints the id, name, role, slave id, and state of each task associated with the framework. Use the --all flag to include unreachable and completed tasks, as well each task's lifecycle
   framework <framework-id> tasks <task-id> - Prints the task info of the specified task of a framework
   framework <framework-id> roles - Prints the roles associated with the framework
+  framework <framework-id> options - Prints the framework's DC/OS package options (if applicable)
 EOF
 }
 
