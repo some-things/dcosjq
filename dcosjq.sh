@@ -336,8 +336,8 @@ esac
 #####
 printFrameworkList () {
   TARGET_FILE="mesos_state"
-  (echo -e "ID NAME"
-  getEndpoint | jq -r '.frameworks[] | "\(.id + " " + .name)"' | sort -k 2) | column -t
+  (echo -e "ID NAME ACTIVE"
+  getEndpoint | jq -r '.frameworks[] | "\(.id + " " + .name + " " + (.active | tostring))"' | sort -k 2) | column -t
 }
 
 # Need to do something better with this... Perhaps just print similar output to the summary (using only mesos state) but more readable...
