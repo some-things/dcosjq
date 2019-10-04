@@ -336,7 +336,7 @@ esac
 #####
 printFrameworkList () {
   TARGET_FILE="mesos_state"
-  (echo -e "ID NAME"
+  (echo -e "ID NAME ACTIVE"
   getEndpoint | jq -r '.frameworks[] | "\(.id + " " + .name + " " + (.active | tostring))"' | sort -k 2) | column -t
 }
 
