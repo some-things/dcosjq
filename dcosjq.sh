@@ -958,7 +958,37 @@ checkErrors () {
       break
     done
 
+    # nscd running check
+    NSCD_RUNNING="$(grep -i 'nscd' -- */*ps*aux* 2> /dev/null | sort -u | cut -d '/' -f 1)"
+    for f in */*ps*aux*; do
+      if [[ -s "$f" ]]; then
+        if [[ ! -z $NSCD_RUNNING ]]; then
+          echo -e "\xE2\x9D\x8C nscd is running on $(echo "$NSCD_RUNNING" | wc -l | tr -d '[:space:]') node(s). Please ensure that nscd is stopped and disabled on boot on the following node(s):"
+          echo -e "$NSCD_RUNNING" | sed 's/^/     /g'
+        else
+          echo -e "\xE2\x9C\x94 No nodes with nscd running."
+        fi
+      else
+        echo -e "\xE2\x9C\x94 Skipping nscd check due to no 'ps aux' output."
+      fi
+      break
+    done
+
     # Firewalld running check
+    FIREWALLD_RUNNING="$(grep -i 'firewalld' -- */*ps*aux* 2> /dev/null | sort -u | cut -d '/' -f 1)"
+    for f in */*ps*aux*; do
+      if [[ -s "$f" ]]; then
+        if [[ ! -z $FIREWALLD_RUNNING ]]; then
+          echo -e "\xE2\x9D\x8C firewalld is running on $(echo "$FIREWALLD_RUNNING" | wc -l | tr -d '[:space:]') node(s). Please ensure that firewalld is stopped and disabled on boot on the following node(s):"
+          echo -e "$FIREWALLD_RUNNING" | sed 's/^/     /g'
+        else
+          echo -e "\xE2\x9C\x94 No nodes with firewalld running."
+        fi
+      else
+        echo -e "\xE2\x9C\x94 Skipping firewalld check due to no 'ps aux' output."
+      fi
+      break
+    done
 
     # Zookeeper fsync event check
     ZOOKEEPER_FSYNC_EVENTS="$(grep -i 'fsync-ing the write ahead log in' -- */dcos-exhibitor.service* 2> /dev/null)"
@@ -986,7 +1016,7 @@ checkErrors () {
     fi
 
     # CockroachDB time sync check
-    COCKROACHDB_TIME_SYNC_EVENTS="$(grep -i "fewer than half the known nodes are within the maximum offset" -- */dcos-cockroach.service* 2> /dev/null | awk 'BEGIN {FS="/"}; {print$1}' | sort -k 2 | uniq -c)"
+    COCKROACHDB_TIME_SYNC_EVENTS="$(grep -i "fewer than half the known nodes are within the maximum offset\|Sleeping till wall time.*catches up to.*to ensure monotonicity" -- */dcos-cockroach.service* 2> /dev/null | awk 'BEGIN {FS="/"}; {print$1}' | sort -k 2 | uniq -c)"
     if [[ -n $COCKROACHDB_TIME_SYNC_EVENTS ]]; then
       echo -e "\xE2\x9D\x8C CockroachDB logs indicate that there is/was an issue with time sync. Please ensure that time is in sync and CockroachDB is healthy on all Masters."
       (echo -e "EVENTS NODE"
