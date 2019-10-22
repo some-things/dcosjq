@@ -77,7 +77,6 @@ extractBundle ()  {
     find "${BUNDLE_DIR}" -type f -name '*.gz' -exec gunzip -q "{}" \;
     JSON_FILES="$(find "${BUNDLE_DIR}" -type f -name '*.json')"
     JSON_DIR="${BUNDLE_DIR}"
-    formatJSON
     # Move the compressed log bundle to the 'storage' directory; Comment the next 3 lines out to not move the original file.
     mkdir -p "${TICKET_DIR}/storage"
     echo "Moving original bundle file to ${TICKET_DIR}/storage/${BUNDLE_NAME}"
