@@ -335,8 +335,8 @@ esac
 #####
 printFrameworkList () {
   TARGET_FILE="mesos_state"
-  (echo -e "ID NAME ACTIVE"
-  getEndpoint | jq -r '.frameworks[] | "\(.id + " " + .name + " " + (.active | tostring))"' | sort -k 2) | column -t
+  (echo -e "ID~NAME~ACTIVE"
+  getEndpoint | jq -r '.frameworks[] | "\(.id + "~" + .name + "~" + (.active | tostring))"' | sort -k 2) | column -t -s '~'
 }
 
 # Need to do something better with this... Perhaps just print similar output to the summary (using only mesos state) but more readable...
@@ -379,6 +379,12 @@ printFrameworkIDOptions () {
   getEndpoint | jq -r '.frameworks[] | select(.name == "marathon") | .tasks[].labels | from_entries | select(.DCOS_PACKAGE_FRAMEWORK_NAME == "'"$(getEndpoint | jq -r '.frameworks[] | select(.id == "'"${FRAMEWORK_ID}"'") | .name')"'") | .DCOS_PACKAGE_OPTIONS' | base64 --decode | jq '.'
 }
 
+printFrameworkIDVersion () {
+  TARGET_FILE="mesos_state"
+  (echo -e "PACKAGE_NAME~PACKAGE_VERSION"
+  getEndpoint | jq -r '"\(.frameworks[] | select(.name == "marathon") | .tasks[].labels | from_entries | select(.DCOS_PACKAGE_FRAMEWORK_NAME == "'"$(getEndpoint | jq -r '.frameworks[] | select(.id == "'"${FRAMEWORK_ID}"'") | .name')"'") | .DCOS_PACKAGE_NAME + "~" + .DCOS_PACKAGE_VERSION)"') | column -t -s '~'
+}
+
 printFrameworkCommandUsage () {
   cat <<EOF
 dcosjq framework usage:
@@ -389,6 +395,7 @@ dcosjq framework usage:
   framework <framework-id> tasks <task-id> - Prints the task info of the specified task of a framework
   framework <framework-id> roles - Prints the roles associated with the framework
   framework <framework-id> options - Prints the framework's DC/OS package options (if applicable)
+  framework <framework-id> version - Prints the framework's DC/OS package name and version (if applicable)
 EOF
 }
 
@@ -433,6 +440,9 @@ case "${1}" in
             ;;
           "options" )
             printFrameworkIDOptions
+            ;;
+          "version" )
+            printFrameworkIDVersion
             ;;
           * )
             printFrameworkIDSummary
